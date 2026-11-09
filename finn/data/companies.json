@@ -1,0 +1,116 @@
+[
+  {
+    "symbol": "INFY",
+    "name": "Infosys",
+    "sector": "IT services",
+    "holding": true
+  },
+  {
+    "symbol": "TCS",
+    "name": "Tata Consultancy Services",
+    "sector": "IT services",
+    "holding": true
+  },
+  {
+    "symbol": "KPITTECH",
+    "name": "KPIT Technologies",
+    "sector": "Engineering services",
+    "holding": true
+  },
+  {
+    "symbol": "HDFCBANK",
+    "name": "HDFC Bank",
+    "sector": "Banking",
+    "holding": true
+  },
+  {
+    "symbol": "FEDERALBNK",
+    "name": "Federal Bank",
+    "sector": "Banking",
+    "holding": true
+  },
+  {
+    "symbol": "SHRIRAMFIN",
+    "name": "Shriram Finance",
+    "sector": "Lending",
+    "holding": true
+  },
+  {
+    "symbol": "DRREDDY",
+    "name": "Dr. Reddy’s Laboratories",
+    "sector": "Pharmaceuticals",
+    "holding": true
+  },
+  {
+    "symbol": "SYNGENE",
+    "name": "Syngene International",
+    "sector": "Life sciences",
+    "holding": true
+  },
+  {
+    "symbol": "AARTIIND",
+    "name": "Aarti Industries",
+    "sector": "Specialty chemicals",
+    "holding": true
+  },
+  {
+    "symbol": "FINEORG",
+    "name": "Fine Organic Industries",
+    "sector": "Specialty chemicals",
+    "holding": true
+  },
+  {
+    "symbol": "SUPREMEIND",
+    "name": "Supreme Industries",
+    "sector": "Materials",
+    "holding": true
+  },
+  {
+    "symbol": "POLYCAB",
+    "name": "Polycab India",
+    "sector": "Electricals",
+    "holding": true
+  },
+  {
+    "symbol": "BLUESTARCO",
+    "name": "Blue Star",
+    "sector": "Consumer durables",
+    "holding": true
+  },
+  {
+    "symbol": "CERA",
+    "name": "Cera Sanitaryware",
+    "sector": "Building products",
+    "holding": true
+  },
+  {
+    "symbol": "TATAPOWER",
+    "name": "Tata Power",
+    "sector": "Power",
+    "holding": true
+  },
+  {
+    "symbol": "POWERGRID",
+    "name": "Power Grid Corporation",
+    "sector": "Power",
+    "holding": true
+  },
+  {
+    "symbol": "LTTS",
+    "name": "L&T Technology Services",
+    "sector": "Engineering services",
+    "holding": false
+  },
+  {
+    "symbol": "SRF",
+    "name": "SRF",
+    "sector": "Specialty chemicals",
+    "holding": false
+  },
+  {
+    "symbol": "HAVELLS",
+    "name": "Havells India",
+    "sector": "Electricals",
+    "holding": false
+  }
+]

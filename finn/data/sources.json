@@ -1,0 +1,167 @@
+[
+  {
+    "id": "infy-original",
+    "symbol": "INFY",
+    "title": "Q4 FY24 earnings call",
+    "kind": "Earnings call",
+    "date": "2024-04-18",
+    "locator": "Management guidance",
+    "url": "https://www.infosys.com/investors/reports-filings/quarterly-results/2023-2024/q4/documents/transcripts/earningscall.pdf",
+    "excerpt": "our revenue growth guidance for FY '25 is 1% to 3% growth in constant currency.",
+    "page": 4
+  },
+  {
+    "id": "infy-july",
+    "symbol": "INFY",
+    "title": "Q1 FY25 earnings call",
+    "kind": "Earnings call",
+    "date": "2024-07-18",
+    "locator": "Management guidance",
+    "url": "https://www.infosys.com/investors/reports-filings/quarterly-results/2024-2025/q1/documents/transcripts/earningscall.pdf",
+    "excerpt": "guidance for the full financial year to 3% to 4% growth in constant currency.",
+    "page": 5
+  },
+  {
+    "id": "infy-october",
+    "symbol": "INFY",
+    "title": "Q2 FY25 earnings call",
+    "kind": "Earnings call",
+    "date": "2024-10-17",
+    "locator": "Management guidance",
+    "url": "https://www.infosys.com/investors/reports-filings/quarterly-results/2024-2025/q2/documents/transcripts/earningscall.pdf",
+    "excerpt": "The new guidance is 3.75% to 4.5% growth in constant currency.",
+    "page": 4
+  },
+  {
+    "id": "infy-january",
+    "symbol": "INFY",
+    "title": "Q3 FY25 earnings call",
+    "kind": "Earnings call",
+    "date": "2025-01-16",
+    "locator": "Management guidance",
+    "url": "https://www.infosys.com/investors/reports-filings/quarterly-results/2024-2025/q3/documents/transcripts/earningscall.pdf",
+    "excerpt": "we are revising our revenue growth guidance to growth of 4.5% to 5% in constant currency.",
+    "page": 4
+  },
+  {
+    "id": "infy-actual",
+    "symbol": "INFY",
+    "title": "Q4 FY25 earnings call",
+    "kind": "Earnings call",
+    "date": "2025-04-17",
+    "locator": "CFO’s FY25 review",
+    "url": "https://www.infosys.com/investors/reports-filings/quarterly-results/2024-2025/q4/documents/transcripts/earningscall.pdf",
+    "excerpt": "We closed the year with revenues at $19.3 bn, a growth of 4.2% in constant currency terms",
+    "page": 4
+  },
+  {
+    "id": "infy-business",
+    "symbol": "INFY",
+    "title": "FY24 integrated annual report",
+    "kind": "Annual report",
+    "date": "FY 2023–24",
+    "locator": "About Infosys",
+    "url": "https://www.infosys.com/investors/reports-filings/annual-report/annual/documents/infosys-ar-24.pdf",
+    "excerpt": "Infosys is a global leader in next-generation digital services and consulting.",
+    "page": null
+  },
+  {
+    "id": "infy-release",
+    "symbol": "INFY",
+    "title": "FY25 consolidated results release",
+    "kind": "Results release",
+    "date": "2025-04-17",
+    "locator": "Financial highlights",
+    "url": "https://www.infosys.com/investors/reports-filings/quarterly-results/2024-2025/q4/documents/ifrs-inr-press-release.pdf",
+    "excerpt": "growth of 4.2% in constant currency",
+    "page": 1
+  },
+  {
+    "id": "infy-filing",
+    "symbol": "INFY",
+    "title": "Audited FY25 financial results",
+    "kind": "Exchange filing",
+    "date": "2025-04-17",
+    "locator": "Quarter and year ended 31 March 2025",
+    "url": "https://www.infosys.com/investors/reports-filings/quarterly-results/2024-2025/q4/documents/q4-and-12m-fy25-financial-results-auditorsreports.pdf",
+    "excerpt": "",
+    "page": null
+  },
+  {
+    "id": "tp-audit",
+    "symbol": "TATAPOWER",
+    "title": "Share capital reconciliation",
+    "kind": "Exchange filing",
+    "date": "2025-04-17",
+    "locator": "Cover letter to NSE and BSE",
+    "url": "https://www.tatapower.com/stock-exchange-compliance/stock-exchange-intimation/2025/Reconciliation%20of%20Share%20Capital%20Audit%20Report%20-%2017.04.2025.pdf",
+    "excerpt": "for the quarter ended March 31, 2025.",
+    "page": 1
+  },
+  {
+    "id": "fb-meeting",
+    "symbol": "FEDERALBNK",
+    "title": "Board meeting intimation",
+    "kind": "Exchange filing",
+    "date": "2025-04-15",
+    "locator": "Proposed meeting date",
+    "url": "https://nsearchives.nseindia.com/corporate/ixbrl/PRIOR_INTIMATION_50642_15042025164306_iXBRL_WEB.html",
+    "excerpt": "Proposed Meeting Date | 2025-04-30",
+    "page": null
+  },
+  {
+    "id": "tcs-filing",
+    "symbol": "TCS",
+    "title": "Q4 FY25 standalone financial results",
+    "kind": "Exchange filing",
+    "date": "2025-04-11",
+    "locator": "General information",
+    "url": "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_84690_11042025001008_iXBRL_WEB.html",
+    "excerpt": "Date of board meeting when results were approved | 10-Apr-2025",
+    "page": null
+  },
+  {
+    "id": "infy-notice",
+    "symbol": "INFY",
+    "title": "Board meeting notice",
+    "kind": "Exchange filing",
+    "date": "2025-03-14",
+    "locator": "Intimation to stock exchanges",
+    "url": "https://www.infosys.com/investors/documents/exchange-filings/2025/board-meeting-14mar2025.pdf",
+    "excerpt": "The financial results will be presented to the Board of Directors on April 17, 2025 for their approval.",
+    "page": 1
+  },
+  {
+    "id": "ltts-ar",
+    "symbol": "LTTS",
+    "title": "FY24 integrated annual report",
+    "kind": "Annual report",
+    "date": "FY 2023–24",
+    "locator": "Management discussion · company overview",
+    "url": "https://www.ltts.com/sites/default/files/investors/corporate-gov/pdf/LTTS-integrated-annual-report2023-24-11062024.pdf",
+    "excerpt": "The Company offers end-to-end consultancy, design, development, and testing across product and process lifecycles.",
+    "page": null
+  },
+  {
+    "id": "srf-ar",
+    "symbol": "SRF",
+    "title": "FY24 annual report",
+    "kind": "Annual report",
+    "date": "FY 2023–24",
+    "locator": "Business portfolio · printed pp. 20–21",
+    "url": "https://www.srf.com/wp-content/uploads/2024/06/SRF-Limited-2023-24_CTC-Final_interactive.pdf",
+    "excerpt": "The Chemicals business includes two segments, namely Specialty Chemicals and Fluorochemicals.",
+    "page": null
+  },
+  {
+    "id": "havells-ar",
+    "symbol": "HAVELLS",
+    "title": "FY24 integrated annual report",
+    "kind": "Annual report",
+    "date": "FY 2023–24",
+    "locator": "Product portfolio · printed p. 13",
+    "url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/9f8beb6b-df57-498e-afac-5d6a497b16d1.pdf",
+    "excerpt": "",
+    "page": null
+  }
+]

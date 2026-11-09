@@ -1,0 +1,33 @@
+[
+  {
+    "source": "infy-filing",
+    "category": "results",
+    "title": "Infosys publishes its FY25 results",
+    "label": "Audited annual results",
+    "enrichment": "infy-release"
+  },
+  {
+    "source": "tp-audit",
+    "category": "compliance",
+    "title": "Tata Power files its share capital audit",
+    "label": "Quarterly reconciliation"
+  },
+  {
+    "source": "fb-meeting",
+    "category": "notice",
+    "title": "Federal Bank sets its board meeting for 30 April",
+    "label": "Meeting notice"
+  },
+  {
+    "source": "tcs-filing",
+    "category": "results",
+    "title": "TCS files its audited standalone results",
+    "label": "Quarterly results"
+  },
+  {
+    "source": "infy-notice",
+    "category": "notice",
+    "title": "Infosys schedules its results meeting",
+    "label": "Meeting notice"
+  }
+]

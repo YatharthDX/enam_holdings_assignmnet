@@ -1,0 +1,64 @@
+{
+  "snapshots": [
+    {
+      "symbol": "INFY",
+      "text": "Infosys provides digital services and consulting.",
+      "source": "infy-business"
+    },
+    {
+      "symbol": "LTTS",
+      "text": "The company delivers engineering research and development services, including design and testing across product and process lifecycles.",
+      "source": "ltts-ar"
+    },
+    {
+      "symbol": "SRF",
+      "text": "SRF reports businesses in chemicals, packaging films and technical textiles. Its chemicals business includes specialty chemicals and fluorochemicals.",
+      "source": "srf-ar"
+    },
+    {
+      "symbol": "HAVELLS",
+      "text": "Havells reports product categories including cables, switchgear, lighting, electrical consumer durables and Lloyd consumer products.",
+      "source": "havells-ar"
+    }
+  ],
+  "series": [
+    {
+      "symbol": "INFY",
+      "metric": "Revenue growth",
+      "basis": "Constant currency",
+      "scope": "Consolidated",
+      "period": "FY25",
+      "unit": "%",
+      "actual": {
+        "value": 4.2,
+        "source": "infy-actual"
+      },
+      "forecasts": [
+        {
+          "label": "Original guidance",
+          "low": 1,
+          "high": 3,
+          "source": "infy-original"
+        },
+        {
+          "label": "July revision",
+          "low": 3,
+          "high": 4,
+          "source": "infy-july"
+        },
+        {
+          "label": "October revision",
+          "low": 3.75,
+          "high": 4.5,
+          "source": "infy-october"
+        },
+        {
+          "label": "Final guidance",
+          "low": 4.5,
+          "high": 5,
+          "source": "infy-january"
+        }
+      ]
+    }
+  ]
+}

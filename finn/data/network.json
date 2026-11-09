@@ -1,0 +1,205 @@
+{
+  "people": [
+    {
+      "id": "mira",
+      "name": "Mira Shah",
+      "role": "Delivery lead",
+      "employer": "INFY",
+      "tenure": "2019–2023",
+      "topics": [
+        "IT delivery",
+        "contract ramp-up",
+        "revenue recognition"
+      ],
+      "question": "Which milestones usually separate a signed contract from billable delivery?"
+    },
+    {
+      "id": "arjun",
+      "name": "Arjun Menon",
+      "role": "Account director",
+      "employer": "TCS",
+      "tenure": "2016–2022",
+      "topics": [
+        "IT services",
+        "client budgets",
+        "IT delivery"
+      ],
+      "question": "How do client budget approvals affect the timing of new projects?"
+    },
+    {
+      "id": "tara",
+      "name": "Tara Bose",
+      "role": "Program director",
+      "employer": "INFY",
+      "tenure": "2017–2022",
+      "topics": [
+        "IT delivery",
+        "contract staffing"
+      ],
+      "question": "What can delay the staffing of a large services engagement?"
+    },
+    {
+      "id": "dev",
+      "name": "Dev Shah",
+      "role": "Engineering manager",
+      "employer": "LTTS",
+      "tenure": "2018–2024",
+      "topics": [
+        "engineering services",
+        "embedded systems"
+      ],
+      "question": "Where do product engineering customers spend the longest on validation?"
+    },
+    {
+      "id": "leela",
+      "name": "Leela Nair",
+      "role": "Process engineer",
+      "employer": "SRF",
+      "tenure": "2017–2021",
+      "topics": [
+        "specialty chemicals",
+        "plant utilisation"
+      ],
+      "question": "How does qualification by a customer affect plant utilisation?"
+    },
+    {
+      "id": "kabir",
+      "name": "Kabir Sethi",
+      "role": "Channel manager",
+      "employer": "HAVELLS",
+      "tenure": "2019–2024",
+      "topics": [
+        "electricals",
+        "distribution",
+        "channel inventory"
+      ],
+      "question": "Which signs distinguish dealer restocking from consumer demand?"
+    },
+    {
+      "id": "sana",
+      "name": "Sana Ali",
+      "role": "Credit manager",
+      "employer": "FEDERALBNK",
+      "tenure": "2018–2023",
+      "topics": [
+        "banking",
+        "credit",
+        "underwriting"
+      ],
+      "question": "Which early signals do underwriters watch when a loan book grows?"
+    },
+    {
+      "id": "ira",
+      "name": "Ira Sen",
+      "role": "Grid planning engineer",
+      "employer": "TATAPOWER",
+      "tenure": "2018–2022",
+      "topics": [
+        "power",
+        "transmission",
+        "grid planning"
+      ],
+      "question": "What typically determines the lead time of a grid upgrade?"
+    },
+    {
+      "id": "neel",
+      "name": "Neel Roy",
+      "role": "Clinical operations lead",
+      "employer": "SYNGENE",
+      "tenure": "2016–2023",
+      "topics": [
+        "life sciences",
+        "clinical research"
+      ],
+      "question": "Which milestones most often alter a research contract timeline?"
+    },
+    {
+      "id": "rhea",
+      "name": "Rhea Kapur",
+      "role": "Product manager",
+      "employer": "POLYCAB",
+      "tenure": "2017–2024",
+      "topics": [
+        "electricals",
+        "cables",
+        "distribution"
+      ],
+      "question": "How does the mix of institutional and retail orders affect lead times?"
+    },
+    {
+      "id": "amit",
+      "name": "Amit Vyas",
+      "role": "Plant manager",
+      "employer": "FINEORG",
+      "tenure": "2019–2023",
+      "topics": [
+        "specialty chemicals",
+        "process yields"
+      ],
+      "question": "Which process changes take longest to validate at scale?"
+    },
+    {
+      "id": "asha",
+      "name": "Asha Das",
+      "role": "Credit analyst",
+      "employer": "HDFCBANK",
+      "tenure": "2017–2022",
+      "topics": [
+        "banking",
+        "underwriting",
+        "credit"
+      ],
+      "question": "How do underwriting teams interpret early delinquencies?"
+    }
+  ],
+  "edges": [
+    [
+      "investor",
+      "mira"
+    ],
+    [
+      "investor",
+      "arjun"
+    ],
+    [
+      "investor",
+      "leela"
+    ],
+    [
+      "investor",
+      "kabir"
+    ],
+    [
+      "investor",
+      "sana"
+    ],
+    [
+      "investor",
+      "ira"
+    ],
+    [
+      "investor",
+      "neel"
+    ],
+    [
+      "investor",
+      "asha"
+    ],
+    [
+      "mira",
+      "tara"
+    ],
+    [
+      "arjun",
+      "dev"
+    ],
+    [
+      "kabir",
+      "rhea"
+    ],
+    [
+      "leela",
+      "amit"
+    ]
+  ]
+}
