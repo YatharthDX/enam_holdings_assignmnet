@@ -5,6 +5,9 @@ services:
       - "${FINN_PORT:-8080}:8080"
     volumes:
       - finn_data:/data
+    environment:
+      FINN_AUTO_REFRESH: "${FINN_AUTO_REFRESH:-1}"
+      FINN_REFRESH_SECONDS: "${FINN_REFRESH_SECONDS:-900}"
     healthcheck:
       test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8080/health', timeout=3).close()"]
       interval: 10s

@@ -1,5 +1,6 @@
 import {clearRecords, esc, nav, openSheet, route} from './ui.js';
 import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js';
+import {liveBriefView} from './live-view.js';
 
 const workspace = document.querySelector('#workspace');
 const sheet = document.querySelector('#sheet');
@@ -8,14 +9,71 @@ let catalog;
 let activeResearch;
 let revision = 0;
 let activeHash = '';
+let pollTimer;
+let liveSignature = '';
+let lastNotice = '';
+
+function signature(value) {
+  return JSON.stringify([value.job?.started,value.job?.finished,value.job?.status,value.unread]);
+}
+
+function userIsReading() {
+  return sheet.open || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+}
+
+function scheduleResearchPoll() {
+  clearTimeout(pollTimer);
+  if (activeResearch?.discovery?.status !== 'running') return;
+  const symbol = activeResearch.company.symbol;
+  const previous = JSON.stringify(activeResearch.discovery);
+  pollTimer = setTimeout(async () => {
+    const {view, params} = locationState();
+    if (view !== 'research' || (params.get('ticker') || 'INFY') !== symbol) return;
+    try {
+      const data = await api('research/' + encodeURIComponent(symbol) + '/discovery');
+      if (JSON.stringify(data.job) !== previous && !userIsReading()) {
+        catalog = null;
+        await render();
+        return;
+      }
+    } catch {
+      const status = document.querySelector('#discovery-status');
+      if (status) status.textContent = 'Connection interrupted. Existing indexed sources remain available.';
+    }
+    scheduleResearchPoll();
+  }, 4000);
+}
+
+function schedulePoll() {
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(async () => {
+    const {view,params}=locationState();
+    if (view!=='brief' || params.get('mode')==='replay') return;
+    try {
+      const current=await api('live/status');
+      if (signature(current)!==liveSignature &&
+          !userIsReading() &&
+          !document.querySelector('#alert-rules[open]') &&
+          !document.querySelector('#date-form:not([hidden])')) {
+        await render();
+        return;
+      }
+    } catch {
+      const status=document.querySelector('#live-status');
+      if (status) status.textContent='Connection interrupted. Showing the records already loaded.';
+    }
+    schedulePoll();
+  },4000);
+}
 function locationState() {
   const [view, raw=''] = location.hash.slice(1).split('?');
   return {view:view || 'brief', params:new URLSearchParams(raw)};
 }
-async function api(path, params = {}) {
+async function api(path, params = {}, options = {}) {
   const url = new URL('/api/' + path, location.origin);
   Object.entries(params).forEach(([key,value]) => { if (value) url.searchParams.set(key,value); });
-  const response = await fetch(url,{headers:{Accept:'application/json'}});
+  const response = await fetch(url,{...options,headers:{Accept:'application/json',
+    ...(options.body ? {'Content-Type':'application/json'} : {})}});
   if (!response.ok) {
     const error = await response.json().catch(()=>({}));
     throw new Error(typeof error.detail === 'string' ? error.detail : 'The request could not be completed.');
@@ -23,6 +81,7 @@ async function api(path, params = {}) {
   return response.json();
 }
 async function render() {
+  clearTimeout(pollTimer);
   const version=++revision;
   if (activeHash) scrollPositions.set(activeHash, window.scrollY);
   const destination=location.hash || '#brief';
@@ -35,8 +94,14 @@ async function render() {
     if (version!==revision) return;
     let draw;
     if (view==='brief') {
-      const data=await api('brief',{window:params.get('window') || '24h', start:params.get('start'),end:params.get('end')});
-      draw=()=>briefView(data,params,params.get('window')==='custom');
+      const mode=params.get('mode') || 'live';
+      const data=await api('brief',{mode,window:params.get('window') || '24h',
+        start:params.get('start'),end:params.get('end')});
+      draw=()=>mode==='live' ? liveBriefView(data,params,params.get('window')==='custom') :
+        briefView(data,params,params.get('window')==='custom');
+      if (mode==='live') {
+        liveSignature=signature({job:data.job,unread:data.alerts.filter(a=>!a.seen).length});
+      }
     } else if (view==='research') {
       const symbol=params.get('ticker') || 'INFY';
       const data=await api('research/'+encodeURIComponent(symbol),{q:params.get('q')});
@@ -53,11 +118,19 @@ async function render() {
     if (version!==revision) return;
     clearRecords();
     workspace.innerHTML=draw();
-    const mode = view === 'research' ? 'Document index' : view === 'people' ? 'Fictional network' : 'Historical replay';
+    const mode = view === 'research' ? 'Document index' : view === 'people' ? 'Fictional network' :
+      view === 'brief' && params.get('mode')!=='replay' ? 'Live sources' : 'Historical replay';
     document.querySelector('#mode-text').textContent = mode;
     document.title=(workspace.querySelector('h1')?.textContent || 'Portfolio brief')+' · FINN';
     activeHash=destination;
     window.scrollTo(0,scrollPositions.get(destination)||0);
+    if (view==='brief' && params.get('mode')!=='replay') {
+      if (lastNotice) document.querySelector('#live-status').textContent=lastNotice;
+      lastNotice='';
+      schedulePoll();
+    } else if (view === 'research') {
+      scheduleResearchPoll();
+    }
   } catch(error) {
     if (version!==revision) return;
     workspace.innerHTML=`<section class="empty error" role="alert"><h2>Unable to open this view</h2><p>${esc(error.message)}</p><button class="button secondary" id="retry">Retry</button> <a href="#brief">Back to brief</a></section>`;
@@ -72,6 +145,39 @@ document.addEventListener('click',event=>{
   if (target.hasAttribute('data-sheet')) { openSheet(target.dataset.sheet); return; }
   if (target.matches('.close') || (event.target===sheet && target===sheet)) { sheet.close(); return; }
   if (target.id==='retry') { render(); return; }
+  if (target.id === 'show-alerts') {
+    const history = document.querySelector('#alert-history');
+    if (history) {
+      history.open = true;
+      history.scrollIntoView({block:'start'});
+    }
+    return;
+  }
+  if (target.id === 'discover-documents') {
+    target.disabled = true;
+    const symbol = activeResearch.company.symbol;
+    api('research/' + encodeURIComponent(symbol) + '/discover', {}, {method:'POST'})
+      .then(() => render())
+      .catch(error => {
+        target.disabled = false;
+        const status = document.querySelector('#discovery-status');
+        if (status) status.textContent = error.message;
+      });
+    return;
+  }
+  if (target.id==='live-refresh' || target.id==='alerts-read') {
+    target.disabled=true;
+    const path=target.id==='live-refresh'?'live/refresh':'alerts/read';
+    api(path,{}, {method:'POST'}).then(()=>{
+      lastNotice=path==='live/refresh'?'Refresh requested. Source results will appear here.':'Alerts marked as read.';
+      render();
+    }).catch(error=>{
+      target.disabled=false;
+      const status = document.querySelector('#live-status');
+      if (status) status.textContent=error.message;
+    });
+    return;
+  }
   if (target.id==='dates-toggle') {
     const form=document.querySelector('#date-form');
     form.hidden=!form.hidden;
@@ -86,7 +192,7 @@ document.addEventListener('click',event=>{
   }
 });
 document.querySelector('.skip').addEventListener('click',event=>{event.preventDefault();workspace.focus();});
-document.addEventListener('submit',event=>{
+document.addEventListener('submit',async event=>{
   const form=event.target;
   const {params}=locationState();
   const fields=new FormData(form);
@@ -95,7 +201,7 @@ document.addEventListener('submit',event=>{
   if (form.id==='date-form') {
     const start=field('start'),end=field('end');
     form.elements.end.setCustomValidity(start>end?'End date must be on or after the start date.':'');
-    if (form.reportValidity()) location.hash=route('brief',{window:'custom',start,end});
+    if (form.reportValidity()) location.hash=route('brief',{mode:params.get('mode')||'live',window:'custom',start,end});
   } else if (form.id==='ticker-form') {
     const input=field('ticker'), term=input.toLowerCase();
     const match=catalog.companies.find(c=>c.name.toLowerCase()===term || c.symbol.toLowerCase()===term);
@@ -107,6 +213,20 @@ document.addEventListener('submit',event=>{
     location.hash=route('research',{ticker:activeResearch.company.symbol,q:field('term')});
   } else if (form.id==='people-form') {
     location.hash=route('people',{q:field('q'),symbol:params.get('symbol')});
+  } else if (form.id==='alert-rule-form') {
+    const button=form.querySelector('[type=submit]');
+    button.disabled=true;
+    try {
+      await api('alert-settings',{}, {method:'PUT',body:JSON.stringify({
+        enabled:fields.has('enabled'),price_pct:Number(field('price_pct')),
+        volume_multiple:Number(field('volume_multiple')),categories:fields.getAll('categories')
+      })});
+      lastNotice='Alert rules saved.';
+      await render();
+    } catch(error) {
+      document.querySelector('#rules-result').textContent=error.message;
+      button.disabled=false;
+    }
   }
 });
 document.addEventListener('input',event=>{

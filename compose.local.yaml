@@ -1,0 +1,9 @@
+# Run updated source using the runtime image from the successful M1 build.
+# Start with: docker compose -f compose.yaml -f compose.local.yaml up --no-build --pull never --wait
+services:
+  app:
+    image: ${FINN_RUNTIME_IMAGE:-enamholdings-app:latest}
+    pull_policy: never
+    volumes:
+      - ./finn:/app/finn:ro
+      - ./tests:/app/tests:ro

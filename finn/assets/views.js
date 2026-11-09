@@ -1,4 +1,5 @@
 import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js';
+import {modeSwitch, windowControls} from './live-view.js';
 
 function rangeChart(series) {
   const forecasts = series.forecasts;
@@ -19,7 +20,6 @@ function itemRow(r) {
     <h3>${esc(r.title)}</h3><p>${esc(r.reason)}</p>${sourceButton(r.source,'Open filing')}</article>`;
 }
 export function briefView(data, params, customOpen) {
-  const selected = params.get('window') || '24h';
   const material = data.rows.filter(r => r.priority === 'Material');
   const routine = data.rows.filter(r => r.priority === 'Routine');
   const lead = material[0];
@@ -27,13 +27,6 @@ export function briefView(data, params, customOpen) {
   const final = comp?.forecasts.at(-1);
   const leadTitle = comp ? `${lead.company} closes ${comp.period} ${final.position} its final guidance` : lead?.title;
   const desc = comp ? `Revenue grew ${comp.actual.value}% in constant currency. Management’s final forecast was ${rangeText(final)}.` : lead?.reason;
-  const filters = `<div class="segments" aria-label="Time window">
-    ${[['24h','24 hours'],['7d','7 days']].map(([key,label]) => `<a href="${route('brief',{window:key})}" ${selected === key ? 'aria-current="true"' : ''}>${label}</a>`).join('')}
-    <button type="button" id="dates-toggle" aria-expanded="${customOpen}" ${selected === 'custom' ? 'class="active"' : ''}>Dates ${icon('down',13)}</button></div>`;
-  const dates = `<form id="date-form" class="date-form" ${customOpen ? '' : 'hidden'}>
-    <label>From<input type="date" name="start" required max="${data.as_of}" value="${data.start}"></label>
-    <label>Through<input type="date" name="end" required max="${data.as_of}" value="${data.end}"></label>
-    <button class="button primary" type="submit">Apply dates</button></form>`;
   const feature = lead ? `<article class="lead ${comp?'with-chart':''}"><div class="lead-copy">
     <div class="lead-meta"><span class="flag">Material filing</span><span>${esc(lead.symbol)} · Results</span></div>
     <h2>${esc(leadTitle)}</h2><p>${esc(desc)}</p><div class="actions">
@@ -45,7 +38,7 @@ export function briefView(data, params, customOpen) {
     ${data.people.map(personCard).join('')}<a class="text-button" href="${route('people',{symbol:data.focus})}">See connections ${icon('arrow',16)}</a></aside>` : '';
   return heading('Thursday, 17 April 2025 · End of day','Portfolio brief',
     '',`<a class="holdings-link" href="#portfolio">${icon('layers')} ${data.holdings} holdings</a>`) +
-    `<div class="control-row">${filters}<div class="counts"><b>${material.length}</b> material <span>·</span> ${routine.length} routine</div></div>${dates}
+    `<div class="mode-actions">${modeSwitch('replay')}</div>${windowControls(data,params,customOpen)}
     ${feature}${!data.rows.length ? empty('No filings in this sample window','Choose 7 days or a different date range in the historical replay.') : ''}
     <div class="lower-grid"><section class="panel"><div class="section-meta">${esc(data.start === data.end ? dateLabel(data.end) : dateLabel(data.start)+' – '+dateLabel(data.end))}</div>
     <h2>Filing register</h2>${more}${lead?`<div class="register-entry"><span class="status-dot"></span><div><strong>${esc(lead.company)}</strong><small>Featured result · ${esc(dateLabel(lead.date))}</small></div>${sourceButton(lead.source,'Source')}</div>`:''}
@@ -60,7 +53,7 @@ export function verdict(comp, index) {
 }
 function guidanceCard(comp) {
   const final = comp.forecasts.length-1;
-  return `<section class="panel guidance"><div class="section-meta">${esc(comp.period)} · ${esc(comp.basis)} · ${esc(comp.scope)}</div>
+  return `<section class="panel guidance"><div class="section-meta">Historical ${esc(comp.period)} · ${esc(comp.basis)} · ${esc(comp.scope)}</div>
   <h2>Guidance check</h2><div class="actual-row"><div><small>Reported revenue growth</small><strong>${comp.actual.value}%</strong></div>${sourceButton(comp.actual.source,'Actual source')}</div>
   <p class="panel-intro">Choose a forecast to compare it with the final result.</p>
   <div class="forecasts">${comp.forecasts.map((r,i)=>`<button type="button" class="forecast" data-forecast="${i}" aria-pressed="${i===final}">
@@ -85,12 +78,20 @@ export function researchView(data,catalog) {
     <form id="evidence-form" class="search-form"><label for="term">Word or phrase</label><div class="input-line">
     <input name="term" id="term" maxlength="160" value="${esc(data.query)}" placeholder="e.g. revenue guidance"><button class="button secondary" type="submit">Search</button></div></form>
     ${matches}<details class="routine"><summary>Source documents <b>${data.sources.length}</b> ${icon('down',15)}</summary>${citations}</details></section>`;
-  const noDocs = empty('No indexed sources for '+c.symbol,'This build has no verified pages for this company. You can index a public annual report or earnings-call PDF using the command in the README.');
+  const noDocs = empty('No indexed sources for '+c.symbol,'Find primary documents for this ticker to build its evidence index.');
+  const job = data.discovery;
+  const discovery = `<section class="discovery-panel" aria-label="Document discovery">
+    <div><strong>Find primary documents</strong><p>Latest annual report and up to four call transcripts.</p></div>
+    <button type="button" id="discover-documents" class="button secondary" ${job?.status==='running'?'disabled':''}>${job?.status==='running'?'Indexing…':'Find documents'} ${icon('book',16)}</button>
+    <p id="discovery-status" class="discovery-status" role="status">${esc(job?.detail || 'Original documents are discovered via Screener’s public links.')}</p>
+    ${job?.sources?.length ? `<details class="discovered-links"><summary>Discovered originals · ${job.sources.length}</summary>
+      ${job.sources.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)} ${icon('external',14)}</a>`).join('')}</details>` : ''}
+    </section>`;
   const network = `<section class="panel"><div class="section-meta">Fictional network · ${esc(c.symbol)}</div><h2>Who can help?</h2>${data.people.length?data.people.map(personCard).join(''):empty('No recorded connection','Try searching People by industry or area of experience.')}</section>`;
   return heading('Primary-source research','Company research','Check management’s statements against the reported outcome.')+
-    tickerForm(c.symbol,catalog)+`<div class="chips">${samples}</div>
+    tickerForm(c.symbol,catalog)+`<div class="chips">${samples}</div>${discovery}
     <div class="company-heading"><div class="kicker">${esc(c.sector || 'Research index')}</div><h2>${esc(title)}</h2>
-    ${data.snapshot?`<p>${esc(data.snapshot.text)} ${sourceButton(data.snapshot.source,'Source')}</p>`:''}
+    ${data.snapshot?`<div class="section-meta">Historical business snapshot · FY24</div><p>${esc(data.snapshot.text)} ${sourceButton(data.snapshot.source,'Source')}</p>`:''}
     </div><div class="research-grid"><div class="stack">
     ${data.comparison ? guidanceCard(data.comparison) : ''}${data.sources.length?search:noDocs}</div><aside class="stack">${network}
     ${data.sources.length && !data.comparison ? `<div class="note"><strong>Guidance coverage</strong><p>No comparable forecast and outcome have been indexed for this ticker.</p></div>` : ''}</aside></div>`;
@@ -108,6 +109,6 @@ export function peopleView(data,query,symbol,catalog) {
 }
 export function portfolioView(catalog) {
   const holdings=catalog.companies.filter(c=>c.holding);
-  return heading('Demo holdings','Your portfolio',holdings.length+' listed companies in the historical workspace.')+
+  return heading('Demo holdings','Your portfolio',holdings.length+' listed companies monitored by this workspace.')+
     `<div class="holdings-grid">${holdings.map(c=>`<a class="holding" href="${route('research',{ticker:c.symbol})}"><span class="meta">${esc(c.symbol)}</span><strong>${esc(c.name)}</strong><small>${esc(c.sector)}</small>${icon('arrow',16)}</a>`).join('')}</div>`;
 }

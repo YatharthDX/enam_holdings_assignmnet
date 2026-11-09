@@ -37,7 +37,8 @@ def words(text):
 
 
 def short_source(source):
-    return {**source, "page": source.get("page"), "locator": source.get("locator", ""),
+    return {**source, "date": source.get("date") or "Publication date unverified",
+            "page": source.get("page"), "locator": source.get("locator", ""),
             "excerpt": source.get("excerpt", "")}
 
 

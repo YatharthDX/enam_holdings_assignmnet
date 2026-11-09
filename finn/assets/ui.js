@@ -21,6 +21,12 @@ export function route(view, params = {}) {
   return '#' + view + (query ? '?' + query : '');
 }
 export function dateLabel(value, full = false) {
+  if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone:'Asia/Kolkata', day:'numeric', month:'short', year:'numeric',
+      hour:'2-digit', minute:'2-digit', hour12:false
+    }).format(new Date(value)) + ' IST';
+  }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   return new Intl.DateTimeFormat('en-GB', {
     timeZone:'UTC', day:'numeric', month: full ? 'long' : 'short', year: 'numeric'
@@ -68,7 +74,8 @@ export function openSheet(id) {
     if (!['https:'].includes(url.protocol)) return;
     if (d.page) url.hash = 'page=' + d.page;
     const location = [d.page ? 'PDF page ' + d.page : '', d.locator].filter(Boolean).join(' · ');
-    content = `<div class="kicker">Primary evidence</div><h2 id="sheet-title">${esc(d.title)}</h2>
+    const evidenceKind = d.kind === 'EOD market data' ? 'Market data' : 'Primary evidence';
+    content = `<div class="kicker">${evidenceKind}</div><h2 id="sheet-title">${esc(d.title)}</h2>
       <p class="muted">${esc(d.symbol)} · ${esc(d.kind)} · ${esc(dateLabel(d.date))}</p>
       ${d.excerpt_type === 'summary' ? `<h3>Indexed summary</h3><p>${esc(d.excerpt)}</p>` :
         d.excerpt ? `<blockquote>${esc(d.excerpt)}</blockquote>` : ''}

@@ -80,10 +80,15 @@ def import_pdf(file, symbol, kind, title, url, published):
     title = title.strip()
     if kind not in KINDS or not (0 < len(title) <= 240):
         raise ValueError("Select an annual report or transcript and provide a document title.")
-    publication_date = date.fromisoformat(published)
-    if publication_date > date.today():
-        raise ValueError("The publication date must be today or earlier.")
-    published = publication_date.isoformat()
+    if published:
+        publication_date = date.fromisoformat(published)
+        if publication_date > date.today():
+            raise ValueError("The publication date must be today or earlier.")
+        published = publication_date.isoformat()
+    else:
+        # Discovery knows the reporting-period label, while an exact release
+        # date may be absent from the link index. Preserve that uncertainty.
+        published = ""
     path = Path(file)
     if not path.is_file() or not 0 < path.stat().st_size <= MAX_BYTES:
         raise ValueError("Choose a local PDF smaller than 50 MiB.")
