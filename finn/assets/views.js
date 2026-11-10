@@ -1,6 +1,8 @@
-import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js?v=0.5.0';
-import {modeSwitch, windowControls} from './live-view.js?v=0.5.0';
-import {analysisView} from './analysis-view.js?v=0.5.0';
+import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js?v=0.6.0.2';
+import {modeSwitch, windowControls} from './live-view.js?v=0.6.0.2';
+import {analysisView} from './analysis-view.js?v=0.6.0.2';
+import {sourceBrief, dateFilter, reviewedResearch} from './research-view.js?v=0.6.0.2';
+import {identityForm, reconnectCards} from './network-view.js?v=0.6.0.2';
 
 function rangeChart(series) {
   const forecasts = series.forecasts;
@@ -35,7 +37,7 @@ export function briefView(data, params, customOpen) {
     ${sourceButton(lead.source,'Open filing','button secondary')}</div></div>${comp?rangeChart(comp):''}</article>` : '';
   const more = material.slice(1).map(itemRow).join('');
   const network = data.people.length ? `<aside class="panel network-panel"><div class="section-meta">Network · ${esc(data.focus)}</div>
-    <h2>Who can help?</h2><p class="panel-intro">Relevant experience in your demo network.</p>
+    <h2>Who can help?</h2><p class="panel-intro">Roles and tenure recorded in this workspace.</p>
     ${data.people.map(personCard).join('')}<a class="text-button" href="${route('people',{symbol:data.focus})}">See connections ${icon('arrow',16)}</a></aside>` : '';
   return heading('Thursday, 17 April 2025 · End of day','Portfolio brief',
     '',`<a class="holdings-link" href="#portfolio">${icon('layers')} ${data.holdings} holdings</a>`) +
@@ -83,35 +85,35 @@ export function researchView(data,catalog,options = {}) {
     ${matches}<details class="routine"><summary>Source documents <b>${data.sources.length}</b> ${icon('down',15)}</summary>${citations}</details></section>`;
   const noDocs = empty('No indexed sources for '+c.symbol,options.readOnly ? 'Index original documents for this ticker in your own local workspace. The public demo includes the prepared historical source set.' : 'Find primary documents for this ticker to build its evidence index.');
   const job = data.discovery;
-  const discovery = options.readOnly ? '' : `<section class="discovery-panel" aria-label="Document discovery">
+  const discovery = options.readOnly || data.as_of ? '' : `<section class="discovery-panel" aria-label="Document discovery">
     <div><strong>Find primary documents</strong><p>Latest annual report and up to four call transcripts.</p></div>
     <button type="button" id="discover-documents" class="button secondary" ${job?.status==='running'?'disabled':''}>${job?.status==='running'?'Indexing…':'Find documents'} ${icon('book',16)}</button>
     <p id="discovery-status" class="discovery-status" role="status">${esc(job?.detail || 'Original documents are discovered via Screener’s public links.')}</p>
     ${job?.sources?.length ? `<details class="discovered-links"><summary>Discovered originals · ${job.sources.length}</summary>
-      ${job.sources.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)} ${icon('external',14)}</a>`).join('')}</details>` : ''}
+      ${job.sources.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)} ${icon('external',14)}</a><p class="coverage">${s.index_status==='indexed'?s.pages+' pages indexed':s.error?esc(s.error):'Indexing status pending'}</p>`).join('')}</details>` : ''}
     </section>`;
-  const network = `<section class="panel"><div class="section-meta">Fictional network · ${esc(c.symbol)}</div><h2>Who can help?</h2>${data.people.length?data.people.map(personCard).join(''):empty('No recorded connection','Try searching People by industry or area of experience.')}</section>`;
+  const network = `<section class="panel"><div class="section-meta">Network · ${esc(c.symbol)}</div><h2>Who can help?</h2>${data.people.length?data.people.map(personCard).join(''):empty('No recorded connection','Try searching People by industry or area of experience.')}</section>`;
   return heading('Primary-source research','Company research','Inspect company evidence, compare guidance and find relevant contacts.')+
     tickerForm(c.symbol,catalog)+`<div class="chips">${samples}</div>${discovery}
-    <div class="company-heading"><div class="kicker">${esc(c.sector || 'Research index')}</div><h2>${esc(title)}</h2>
+    ${dateFilter(data)}<div class="company-heading"><div class="kicker">${esc(c.sector || 'Research index')}</div><h2>${esc(title)}</h2>
     ${data.snapshot?`<div class="section-meta">Historical business snapshot · FY24</div><p>${esc(data.snapshot.text)} ${sourceButton(data.snapshot.source,'Source')}</p>`:''}
     </div><div class="research-grid"><div class="stack">
-    ${data.comparison ? guidanceCard(data.comparison) : ''}${data.sources.length?search:noDocs}${analysisView(data,options.aiOpen)}</div><aside class="stack">${network}
-    ${data.sources.length && !data.comparison ? `<div class="note"><strong>Guidance coverage</strong><p>No comparable forecast and outcome have been indexed for this ticker.</p></div>` : ''}</aside></div>`;
+    ${data.comparison ? guidanceCard(data.comparison) : ''}${data.pending_guidance?.forecasts.length?`<section class="panel"><div class="section-meta">${esc(data.pending_guidance.period)} · Pending outcome at selected date</div><h2>Guidance available then</h2>${data.pending_guidance.forecasts.map(f=>`<p>${esc(f.label)} · ${rangeText(f)} ${sourceButton(f.source,'Source')}</p>`).join('')}<p class="coverage">The delivered outcome was not available by this date.</p></section>`:''}${sourceBrief(data,options.topic)}${reviewedResearch(data)}${data.sources.length?search:noDocs}${analysisView(data,options.aiOpen)}</div><aside class="stack">${network}${reconnectCards(data.reconnect)}
+    ${data.sources.length && !data.comparison && !data.structured?.comparisons.length ? `<div class="note"><strong>Guidance coverage</strong><p>${data.as_of?'No comparable outcome is available by the selected date. Later and undated evidence is excluded.':'No comparable forecast and outcome have been reviewed for this ticker.'}</p></div>` : ''}</aside></div>`;
 }
 export function peopleView(data,query,symbol,catalog) {
   const c=catalog.companies.find(x=>x.symbol===symbol);
-  return heading('Professional network','People','Search fictional profiles by company, role or experience.')+
+  return heading('Professional network','People','Find recorded experience, inspect an introduction and decide what to ask.')+
     `<form id="people-form" class="search-form"><label for="who">Who can help?</label><div class="input-line">${icon('people')}
     <input id="who" name="q" value="${esc(query)}" placeholder="e.g. IT delivery, SRF or credit" maxlength="120"><button class="button primary" type="submit">Find people</button></div></form>
     <div class="chips">${['IT delivery','Specialty chemicals','Electricals'].map(q=>`<a class="chip" href="${route('people',{q})}">${esc(q)}</a>`).join('')}
     ${query||symbol?'<a class="text-button" href="#people">Clear filters</a>':''}</div>
-    <div class="section-bar"><h2>${c?'Connections for '+esc(c.name):'Connections'}</h2><span>${data.people.length} ${data.people.length===1?'match':'matches'}</span></div>
+    ${identityForm()}<div class="section-bar"><h2>${c?'Connections for '+esc(c.name):'Connections'}</h2><span>${data.people.length} ${data.people.length===1?'match':'matches'}</span></div>
     ${data.people.length ? `<div class="people-grid">${data.people.map(p=>`<article class="contact-tile">${personCard(p)}
      <p class="person-reason">${esc(p.reason)} · ${esc(p.topics[0])}</p></article>`).join('')}</div>` : empty('No matching connection','Try a different company or area of expertise, or clear the filters.')}`;
 }
 export function portfolioView(catalog) {
   const holdings=catalog.companies.filter(c=>c.holding);
   return heading('Demo holdings','Your portfolio',holdings.length+' listed companies monitored by this workspace.')+
-    `<div class="holdings-grid">${holdings.map(c=>`<a class="holding" href="${route('research',{ticker:c.symbol})}"><span class="meta">${esc(c.symbol)}</span><strong>${esc(c.name)}</strong><small>${esc(c.sector)}</small>${icon('arrow',16)}</a>`).join('')}</div>`;
+    `${!catalog.runtime.read_only?`<details class="panel"><summary>Edit portfolio</summary><form id="portfolio-form" class="stack"><label>NSE symbols, separated by commas<textarea name="symbols" rows="3" required>${esc(holdings.map(c=>c.symbol).join(', '))}</textarea></label><p class="coverage">Up to 20 companies. Monitoring rules and holdings stay inside your workspace.</p><button class="button primary" type="submit">Save portfolio</button><p id="portfolio-status" role="status"></p></form></details>`:''}<div class="holdings-grid">${holdings.map(c=>`<a class="holding" href="${route('research',{ticker:c.symbol})}"><span class="meta">${esc(c.symbol)}</span><strong>${esc(c.name)}</strong><small>${esc(c.sector)}</small>${icon('arrow',16)}</a>`).join('')}</div>`;
 }

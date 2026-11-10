@@ -1,4 +1,4 @@
-import {dateLabel, esc, icon, route, sourceButton} from './ui.js?v=0.5.0';
+import {dateLabel, esc, icon, route, sourceButton} from './ui.js?v=0.6.0.2';
 
 function usageLine(usage, saved = true) {
   if (!usage) return '';
@@ -51,7 +51,7 @@ export function analysisView(data, open = false) {
   if (!a) return '';
   const state = !a.enabled ? 'Off' : a.configuration_error ? 'Setup' : a.job?.status === 'running' ? 'Running' : 'Available';
   const content = !a.enabled ? `<div class="optional-ai-copy"><p>The evidence search, guidance comparison and network above work without a model.</p>
-    <p>${a.public_demo ? 'AI synthesis is unavailable in this public demo. The repository supports optional Gemini or OpenAI analysis in your own local workspace.' : 'AI synthesis is an optional extra. To enable it, set <code>FINN_ENABLE_LLM=1</code> and configure a Gemini or OpenAI key as described in README.md.'}</p></div>` :
+    <p>${a.date_filtered ? 'This dated research view excludes later and undated evidence. Optional AI synthesis is available only in the unfiltered local view.' : a.public_demo ? 'AI synthesis is unavailable in this public demo. The repository supports optional Gemini or OpenAI analysis in your own local workspace.' : a.needs_workspace ? 'Open your own workspace before using the optional local AI feature.' : 'AI synthesis is an optional extra. To enable it, set <code>FINN_ENABLE_LLM=1</code> and configure a Gemini or OpenAI key as described in README.md.'}</p></div>` :
     a.configuration_error ? `<div class="optional-ai-copy"><p>Optional AI settings need attention: ${esc(a.configuration_error)}</p><p>Core research remains available above.</p></div>` : analysisBody(data);
   return `<details class="optional-ai" id="optional-ai" ${open ? 'open' : ''}>
     <summary><span>Optional AI synthesis</span><small>${state}</small>${icon('down',16)}</summary>${content}</details>`;

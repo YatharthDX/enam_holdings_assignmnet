@@ -3,4 +3,6 @@
 __pycache__/
 *.py[cod]
 .env
+finn-workspace*.json
+*.sqlite3*
 .DS_Store

@@ -1,4 +1,26 @@
 /* Layout and colour tokens are shared across the brief, research desk and network. */
+.workspace-notice { display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;margin-bottom:24px;border:1px solid var(--line);background:var(--soft);font-size:14px; }
+.workspace-notice p { color:var(--muted);max-width:620px;margin-top:4px; }
+.workspace-notice .button { min-height:42px;font-size:14px; }
+.workspace-notice .text-button { white-space:nowrap; }
+.account-stack { max-width:880px; }
+.asof-form { display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:20px 0; }
+.asof-form label,.fact-workbench label:not(.check),.identity-panel label,.account-stack label:not(.check),.contact-notes label { display:flex;flex-direction:column;gap:6px;font-size:14px; }
+.asof-form input,.fact-workbench input:not([type=checkbox]),select,textarea,.account-stack input[type=file],.identity-panel input,.contact-notes input { width:100%;min-width:0;min-height:44px;border:1px solid var(--line);border-radius:5px;padding:10px;background:var(--card);color:var(--ink);font:inherit; }
+textarea { resize:vertical;max-width:100%; }
+.source-brief h2 { margin-top:8px; }
+.source-brief .chips { margin:18px 0; }
+.extractive-passage { padding:12px 0; }
+.extractive-passage p { margin:10px 0;line-height:1.65; }
+.candidate,.reviewed-comparison { border-top:1px solid var(--line);padding:18px 0; }
+.candidate p,.reviewed-comparison p { margin:8px 0; }
+.fact-workbench>summary,.identity-panel>summary,.account-stack summary { font-weight:600; }
+.fact-workbench .stack,.identity-panel .stack,.contact-notes .stack { gap:16px;margin-top:18px; }
+.fact-workbench .rules-grid,.identity-panel .rules-grid { align-items:start; }
+.identity-result { margin-top:18px; }
+.contact-notes { margin-top:24px;border-top:1px solid var(--line);padding-top:16px; }
+.management-context { padding:14px;margin:16px 0;background:var(--soft);border-left:3px solid var(--green);font-size:14px; }
+.source-brief .coverage,.account-stack .coverage { margin-top:18px; }
 .demo-notice { display:flex;flex-wrap:wrap;gap:6px 20px;padding:14px 18px;margin-bottom:24px;border:1px solid var(--line);background:var(--soft);font-size:14px; }
 .demo-notice strong { color:var(--green); }
 .demo-notice span { color:var(--muted);flex:1 1 320px; }

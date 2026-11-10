@@ -1,0 +1,34 @@
+{
+  "synthetic": true,
+  "people": [
+    {
+      "id": "demo-alex",
+      "name": "Alex Rao",
+      "role": "Operations lead",
+      "employer": "HCLTECH",
+      "tenure": "2020\u20132026",
+      "topics": [
+        "IT delivery",
+        "contract ramp-up"
+      ],
+      "question": "What usually delays the transition from a signed contract to delivery?",
+      "employment": [
+        {
+          "employer": "HCLTECH",
+          "role": "Operations lead",
+          "start": "2020-01-01",
+          "end": "2026-12-31"
+        }
+      ],
+      "education": [
+        "Fictional Institute of Technology"
+      ]
+    }
+  ],
+  "edges": [
+    [
+      "investor",
+      "demo-alex"
+    ]
+  ]
+}

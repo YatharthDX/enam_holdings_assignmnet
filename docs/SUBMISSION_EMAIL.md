@@ -1,4 +1,4 @@
-# Covering email draft — complete links after final checks
+# Covering email draft — fill actual links/results before sending
 
 To: assessment@enam.com  
 Subject: IIT Kanpur – Founding AI Engineer - 2027
@@ -9,17 +9,17 @@ Please find my FINN prototype for the Founding AI Engineer Build Challenge:
 
 - Phone demo: [INSERT VERIFIED PUBLIC URL]
 - Public repository: [INSERT VERIFIED GITHUB URL]
-- AI build history: [INSERT ACCESSIBLE SESSION LINKS OR LIST ATTACHMENTS]
+- AI build history: [INSERT ACCESSIBLE GENUINE SESSION LINKS / ATTACHMENTS]
 
-FINN follows a short investor workflow: identify a material portfolio filing, inspect its primary evidence, and find a relevant person to call. Push prioritizes filings and supports configurable end-of-day price/volume and filing alerts. Pull discovers issuer-original annual reports and call transcripts for an NSE ticker, indexes page-linked evidence, and includes a historical Infosys example comparing original and revised guidance with delivery. Network recommendations and direct queries use twelve clearly fictional profiles with explicit direct and two-hop relationships.
+FINN connects a material portfolio filing to primary evidence and a relevant person. Push prioritizes disclosures and supports configurable filing and completed-session price/volume alerts. Pull discovers issuer-original reports/transcripts for an NSE ticker, presents exact page-linked passages, and compares explicitly reviewed guidance with reported results. Network works inside both workflows and through People search, using twelve fictional profiles with dated employment and recorded direct/two-hop paths.
 
-I chose a small FastAPI/native-JavaScript application with SQLite and one Docker image. Public market data, filings and document pages share ticker identities; private network analysis is demonstrated only with synthetic data. The public link is an anonymous, read-only historical presentation. Fresh indexing, live acquisition and alert configuration are available in the reproducible local workspace. Authentication, per-investor isolation, consent/deletion automation and durable private hosting would precede real personal-data use; the architecture note describes those boundaries.
+I chose FastAPI, native JavaScript, SQLite and one Docker image for a small reproducible prototype. Shared public sources are separated from workspace-owned holdings, profiles, notes, alerts and reviewed facts. Signed browser sessions expire after 24 hours and support export/erasure; profile import/correction/withdrawal is implemented. These are demo sessions, not verified investor accounts or production row-level database policies. Real local profile imports require attested consent/purpose/provenance/expiry; the public deployment accepts synthetic profiles only.
 
-Rules handle ranking, retrieval, calculations and network paths. Optional Gemini/OpenAI synthesis defaults off, sends only bounded public passages, checks quotations/pages/numerical literals and caches results. No autonomous agent acts on the investor's behalf. Core workflows need no model key. The supplied public deployment configuration uses a Free web service and forces AI off.
+Rules handle retrieval, ranking, permissions, comparisons and network paths. Gemini/OpenAI synthesis is optional and off by default, sends only bounded public passages, checks citations/numerical literals and caches results. No autonomous agent contacts people or takes external actions. Core workflows need no model key. The supplied Free hosting configuration permits bounded synthetic workspaces and discovery while forcing models and scheduled acquisition off; its filesystem is ephemeral.
 
-I deliberately concentrated on evidence and the filing-to-contact journey rather than implementing every financial view, OCR or executive identity resolution. The structured guidance comparison is curated for Infosys; generic document search does not claim automatic financial interpretation. Next I would measure extraction quality on unseen issuers and add authenticated private workspaces and durable ingestion.
+I focused on source-backed research and guidance rather than every optional dashboard, universal financial extraction, OCR or automatic biographies. Quantitative interpretation is reviewed by a person before deterministic arithmetic. Production identity/recovery, durable managed storage/backups and broader extraction-quality evaluation would be the next steps. The repository documents these tradeoffs and source coverage.
 
-Verification: [INSERT ACTUAL FINAL COMMIT, CONTAINER/CI RESULTS, PHONE CHECK AND UNSEEN-TICKER RESULT; DO NOT CLAIM UNRUN CHECKS]. Additional decisions, limitations and source coverage are documented in the repository.
+Verification: [INSERT ACTUAL FINAL COMMIT, CONTAINER/CI RESULT, REAL COLD-TICKER RESULT AND PHONE CHECK; DO NOT CLAIM UNRUN CHECKS]. The build includes 140 automated tests with controlled external responses.
 
 Regards,  
 Yatharth Sharma

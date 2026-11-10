@@ -1,4 +1,5 @@
-import {dateLabel, empty, esc, heading, icon, personCard, route, sourceButton} from './ui.js?v=0.5.0';
+import {dateLabel, empty, esc, heading, icon, personCard, route, sourceButton} from './ui.js?v=0.6.0.2';
+import {reconnectCards} from './network-view.js?v=0.6.0.2';
 
 export function modeSwitch(mode) {
   return `<div class="mode-switch" aria-label="Data mode">
@@ -95,26 +96,32 @@ function market(data) {
 
 function liveRow(row) {
   return `<article class="filing-row"><div class="meta">${esc(row.symbol)} · ${esc(when(row.published))}</div>
-    <h3>${esc(row.title)}</h3><p>${esc(row.reason)}</p>${sourceButton(row.source,'Open filing')}
+    <h3>${esc(row.title)}</h3><p>${esc(row.reason)}</p>${managementContext(row)}${sourceButton(row.source,'Open filing')}
+    ${row.other_sources?.length?`<details><summary>Other originals · ${row.other_sources.length}</summary>${row.other_sources.map(s=>sourceButton(s,'Open original')).join('')}</details>`:''}
     <a class="text-button" href="${route('people',{symbol:row.symbol})}">Connections ${icon('people',15)}</a></article>`;
 }
 
-export function liveBriefView(data, params, customOpen, {readOnly = false} = {}) {
+function managementContext(row) {
+  const context=row.management_context;
+  return context?`<div class="management-context"><strong>Incoming-person context · ${esc(context.status)}</strong><p>${esc(context.reason)}</p>${context.person?.distance?personCard(context.person):context.person?'<p>Employment matched; no introduction path is recorded.</p>':''}</div>`:'';
+}
+
+export function liveBriefView(data, params, customOpen, {readOnly = false, autoRefresh = false} = {}) {
   const active=data.rows.filter(row=>row.priority!=='Routine');
   const routine=data.rows.filter(row=>row.priority==='Routine');
   const lead=active[0];
   const running=data.job?.status==='running';
   const unread = data.alerts.filter(alert => !alert.seen).length;
   const feature=lead?`<article class="lead"><div class="lead-copy"><div class="lead-meta"><span class="flag">${esc(lead.label)}</span><span>${esc(lead.symbol)} · ${esc(when(lead.published))}</span></div>
-    <h2>${esc(lead.title)}</h2><p>${esc(lead.details.slice(0,240)||lead.reason)}</p>
+    <h2>${esc(lead.title)}</h2><p>${esc(lead.details.slice(0,240)||lead.reason)}</p>${managementContext(lead)}
     <div class="actions">${sourceButton(lead.source,'Open filing','button primary')}
       <a class="button secondary" href="${route('research',{ticker:lead.symbol})}">Research index ${icon('arrow',16)}</a></div></div></article>`:'';
   const network=data.people.length?`<aside class="panel network-panel"><div class="section-meta">Network · ${esc(data.focus)}</div><h2>Who can help?</h2>
-    <p class="panel-intro">Experience recorded in your fictional network.</p>${data.people.map(personCard).join('')}</aside>`:'';
+    <p class="panel-intro">Roles and tenure recorded in this workspace.</p>${data.people.map(personCard).join('')}</aside>`:'';
   return heading('Portfolio monitoring · '+dateLabel(data.as_of),'Portfolio brief','',
     `<a class="holdings-link" href="#portfolio">${icon('layers')} ${data.holdings} holdings</a>`)+
     `<div class="mode-actions">${modeSwitch('live')}${readOnly ? '<span class="meta">Read only</span>' : `<button id="live-refresh" aria-label="Refresh sources" class="button secondary" type="button" ${running?'disabled':''}>${running?'Refreshing…':'Refresh'}</button>`}</div>
-    <p class="live-status" id="live-status" role="status">${readOnly ? 'Live acquisition is paused in this public demo. Open Historical replay for the prepared investor journey.' : running?'Fetching public filings and completed daily bars…':data.job?.finished?'Last refresh finished '+when(data.job.finished):'Automatic refresh starts when FINN opens.'}</p>
+    <p class="live-status" id="live-status" role="status">${readOnly ? 'Open Historical replay for the prepared investor journey. A private workspace is needed to refresh sources.' : running?'Fetching public filings and completed daily bars…':data.job?.finished?'Last refresh finished '+when(data.job.finished):autoRefresh?'Scheduled source refresh is enabled.':'Select Refresh to fetch public filings and completed daily bars.'}</p>
     ${data.alerts.length ? `<button type="button" class="text-button alert-jump" id="show-alerts">${unread} unread alerts ${icon('arrow',15)}</button>` : ''}
     ${feedStatus(data)}${windowControls(data,params,customOpen)}
     ${feature}${!data.rows.length?empty('No cached filings in this window','Check source status above, refresh, or choose a wider window. Historical replay is available from the selector.') : ''}
@@ -122,6 +129,6 @@ export function liveBriefView(data, params, customOpen, {readOnly = false} = {})
       ${lead?`<div class="register-entry"><span class="status-dot"></span><div><strong>${esc(lead.company)}</strong><small>Featured disclosure</small></div>${sourceButton(lead.source,'Source')}</div>`:''}
       ${active.slice(1).map(liveRow).join('')}
       ${routine.length?`<details class="routine"><summary>Routine disclosures <b>${routine.length}</b> ${icon('down',15)}</summary>${routine.map(liveRow).join('')}</details>`:''}
-      <p class="coverage">Publication times in IST. Last 24 hours is a rolling window.</p></section>${network}</div>
-    ${notifications(data,readOnly)}${settingsForm(data,readOnly)}${market(data)}`;
+      <p class="coverage">Publication times in IST. Last 24 hours is a rolling window.${data.filing_count>data.rows.length?' '+data.filing_count+' filings grouped into '+data.rows.length+' distinct metadata events.':''}</p></section>${network}</div>
+    ${reconnectCards(data.reconnect)}${notifications(data,readOnly)}${settingsForm(data,readOnly)}${market(data)}`;
 }

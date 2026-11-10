@@ -3,6 +3,9 @@ import hashlib
 import os
 import re
 import sqlite3
+import uuid
+import json
+from io import BytesIO
 from contextlib import closing, contextmanager
 from datetime import date
 from pathlib import Path
@@ -12,6 +15,7 @@ SYMBOL = re.compile(r"[A-Z0-9][A-Z0-9&.-]{0,24}")
 KINDS = {"annual_report": "Annual report", "transcript": "Earnings call"}
 MAX_BYTES = 50 * 1024 * 1024
 MAX_PAGES = 800
+PARSER_VERSION = "pdf-text-2"
 
 
 def ticker(value):
@@ -30,6 +34,69 @@ def source_url(value):
 
 def database_path():
     return Path(os.environ.get("FINN_DATA_DIR", ".finn")) / "desk.sqlite3"
+
+
+def limits():
+    from .runtime import public_demo
+    return (20 * 1024 * 1024, 600) if public_demo() else (MAX_BYTES, MAX_PAGES)
+
+
+def original_path(digest):
+    if not re.fullmatch(r"[a-f0-9]{64}", digest):
+        raise ValueError("Invalid document revision.")
+    return database_path().parent / "originals" / (digest + ".pdf")
+
+
+def retain_original(raw, digest, quota=None):
+    from .runtime import public_demo
+    folder = database_path().parent / "originals"
+    folder.mkdir(parents=True, exist_ok=True)
+    if quota is None:
+        quota = (64 if public_demo() else 256) * 1024 * 1024
+    target = original_path(digest)
+    if len(raw) > quota:
+        return
+    if not target.exists():
+        temporary = folder / (uuid.uuid4().hex + ".tmp")
+        try:
+            with temporary.open("xb") as stream:
+                os.chmod(temporary, 0o600)
+                stream.write(raw)
+            os.replace(temporary, target)
+        finally:
+            temporary.unlink(missing_ok=True)
+    target.touch()
+    files = sorted(folder.glob("*.pdf"), key=lambda p:p.stat().st_mtime)
+    size = sum(p.stat().st_size for p in files)
+    for file in files:
+        if size <= quota:
+            break
+        if file != target:
+            size -= file.stat().st_size
+            file.unlink(missing_ok=True)
+
+
+def cached_url(doc_id, digest):
+    return "/api/documents/" + doc_id + "/original?revision=" + digest if original_path(digest).is_file() else None
+
+
+def cached_original(doc_id, revision=None):
+    with read_snapshot() as db:
+        if db is None:
+            return None
+        row = db.execute("SELECT id,symbol,digest FROM documents WHERE id=?", (doc_id,)).fetchone()
+        if not row:
+            return None
+        digest = revision or row["digest"]
+        if digest != row["digest"]:
+            has_history = db.execute("SELECT 1 FROM sqlite_master WHERE name='document_versions'").fetchone()
+            if not has_history or not db.execute("SELECT 1 FROM document_versions WHERE doc_id=? AND digest=?", (doc_id,digest)).fetchone():
+                return None
+        path = original_path(digest)
+        if not path.is_file():
+            return None
+        path.touch()
+        return path, row["symbol"] + "-" + digest[:8] + ".pdf"
 
 
 @contextmanager
@@ -55,12 +122,12 @@ def symbols():
         return [r["symbol"] for r in db.execute("SELECT DISTINCT symbol FROM documents ORDER BY symbol")]
 
 
-def for_symbol(symbol, include_pages):
+def for_symbol(symbol, include_pages, include_revision=False):
     with read_snapshot() as db:
         if db is None:
             return [], []
         records = db.execute(
-            "SELECT id, symbol, title, kind, published AS date, url FROM documents "
+            "SELECT id, symbol, title, kind, published AS date, url,digest FROM documents "
             "WHERE symbol=? ORDER BY published DESC, id", (symbol,)
         ).fetchall()
         passages = []
@@ -69,7 +136,19 @@ def for_symbol(symbol, include_pages):
                 "SELECT p.doc_id, p.page, p.body FROM pages p JOIN documents d ON d.id=p.doc_id "
                 "WHERE d.symbol=? ORDER BY d.published DESC, d.id, p.page", (symbol,)
             ).fetchall()
-        return [dict(r) for r in records], [dict(p) for p in passages]
+        result = [dict(r) for r in records]
+        for row in result:
+            cached = cached_url(row["id"], row["digest"])
+            if cached:
+                row["cached_url"] = cached
+            if not include_revision:
+                row.pop("digest")
+        if include_revision:
+            has_versions = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='document_parsers'").fetchone()
+            versions = {r[0]: r[1] for r in db.execute("SELECT doc_id,version FROM document_parsers")} if has_versions else {}
+            for row in result:
+                row["parser_version"] = versions.get(row["id"], "legacy")
+        return result, [dict(p) for p in passages]
 
 
 def import_pdf(file, symbol, kind, title, url, published):
@@ -90,13 +169,25 @@ def import_pdf(file, symbol, kind, title, url, published):
         # date may be absent from the link index. Preserve that uncertainty.
         published = ""
     path = Path(file)
-    if not path.is_file() or not 0 < path.stat().st_size <= MAX_BYTES:
-        raise ValueError("Choose a local PDF smaller than 50 MiB.")
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    max_bytes, max_pages = limits()
+    if not path.is_file() or not 0 < path.stat().st_size <= max_bytes:
+        raise ValueError(f"Choose a local PDF smaller than {max_bytes // (1024*1024)} MiB.")
+    raw = path.read_bytes()
+    if b"%PDF-" not in raw[:1024]:
+        raise ValueError("The source is not a PDF original.")
+    digest = hashlib.sha256(raw).hexdigest()
     doc_id = "local-" + hashlib.sha256((symbol + "|" + url).encode()).hexdigest()[:24]
-    reader = PdfReader(str(path))
-    if reader.is_encrypted or len(reader.pages) > MAX_PAGES:
-        raise ValueError("Use an unencrypted PDF with at most 800 pages.")
+    with read_snapshot() as existing:
+        if existing is not None and existing.execute("SELECT 1 FROM sqlite_master WHERE name='document_parsers'").fetchone():
+            cached = existing.execute("SELECT d.digest,d.kind,d.title,d.published,v.version FROM documents d "
+                                      "JOIN document_parsers v ON v.doc_id=d.id WHERE d.id=?", (doc_id,)).fetchone()
+            if cached and tuple(cached) == (digest, KINDS[kind], title, published, PARSER_VERSION):
+                count = existing.execute("SELECT COUNT(*) FROM pages WHERE doc_id=?", (doc_id,)).fetchone()[0]
+                retain_original(raw, digest)
+                return doc_id, count, "already indexed"
+    reader = PdfReader(BytesIO(raw))
+    if reader.is_encrypted or len(reader.pages) > max_pages:
+        raise ValueError(f"Use an unencrypted PDF with at most {max_pages} pages.")
     page_text = []
     for page_number, page in enumerate(reader.pages, 1):
         body = " ".join((page.extract_text() or "").split())
@@ -104,6 +195,7 @@ def import_pdf(file, symbol, kind, title, url, published):
             page_text.append((doc_id, page_number, body))
     if not page_text:
         raise ValueError("This PDF has no selectable text. Import a text-searchable original.")
+    retain_original(raw, digest)
 
     dest = database_path()
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -119,14 +211,16 @@ def import_pdf(file, symbol, kind, title, url, published):
         db.execute("""CREATE TABLE IF NOT EXISTS pages (
             doc_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
             page INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY(doc_id, page))""")
+        db.execute("CREATE TABLE IF NOT EXISTS document_parsers (doc_id TEXT PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,version TEXT NOT NULL)")
+        db.execute("CREATE TABLE IF NOT EXISTS document_versions (doc_id TEXT NOT NULL,digest TEXT NOT NULL,metadata TEXT NOT NULL,PRIMARY KEY(doc_id,digest))")
         old = db.execute("SELECT digest, kind, title, published FROM documents WHERE id=?",
                          (doc_id,)).fetchone()
-        if old == (digest, KINDS[kind], title, published):
-            return doc_id, len(page_text), "already indexed"
         db.execute("""INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET kind=excluded.kind, title=excluded.title,
             published=excluded.published, digest=excluded.digest""",
                    (doc_id, symbol, KINDS[kind], title, published, url, digest))
         db.execute("DELETE FROM pages WHERE doc_id=?", (doc_id,))
         db.executemany("INSERT INTO pages VALUES (?, ?, ?)", page_text)
+        db.execute("INSERT INTO document_parsers VALUES(?,?) ON CONFLICT(doc_id) DO UPDATE SET version=excluded.version", (doc_id, PARSER_VERSION))
+        db.execute("INSERT OR IGNORE INTO document_versions VALUES(?,?,?)", (doc_id,digest,json.dumps({"url":url,"title":title,"published":published})))
     return doc_id, len(page_text), "indexed"

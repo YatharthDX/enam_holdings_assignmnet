@@ -5,151 +5,179 @@
       "name": "Mira Shah",
       "role": "Delivery lead",
       "employer": "INFY",
-      "tenure": "2019–2023",
+      "tenure": "2019\u20132023",
       "topics": [
         "IT delivery",
         "contract ramp-up",
         "revenue recognition"
       ],
-      "question": "Which milestones usually separate a signed contract from billable delivery?"
+      "question": "Which milestones usually separate a signed contract from billable delivery?",
+      "synthetic": true
     },
     {
       "id": "arjun",
       "name": "Arjun Menon",
       "role": "Account director",
       "employer": "TCS",
-      "tenure": "2016–2022",
+      "tenure": "2016\u20132022",
       "topics": [
         "IT services",
         "client budgets",
         "IT delivery"
       ],
-      "question": "How do client budget approvals affect the timing of new projects?"
+      "question": "How do client budget approvals affect the timing of new projects?",
+      "synthetic": true
     },
     {
       "id": "tara",
       "name": "Tara Bose",
       "role": "Program director",
       "employer": "INFY",
-      "tenure": "2017–2022",
+      "tenure": "2017\u20132022",
       "topics": [
         "IT delivery",
         "contract staffing"
       ],
-      "question": "What can delay the staffing of a large services engagement?"
+      "question": "What can delay the staffing of a large services engagement?",
+      "synthetic": true
     },
     {
       "id": "dev",
       "name": "Dev Shah",
       "role": "Engineering manager",
       "employer": "LTTS",
-      "tenure": "2018–2024",
+      "tenure": "2018\u20132024",
       "topics": [
         "engineering services",
         "embedded systems"
       ],
-      "question": "Where do product engineering customers spend the longest on validation?"
+      "question": "Where do product engineering customers spend the longest on validation?",
+      "synthetic": true
     },
     {
       "id": "leela",
       "name": "Leela Nair",
       "role": "Process engineer",
       "employer": "SRF",
-      "tenure": "2017–2021",
+      "tenure": "2017\u20132021",
       "topics": [
         "specialty chemicals",
         "plant utilisation"
       ],
-      "question": "How does qualification by a customer affect plant utilisation?"
+      "question": "How does qualification by a customer affect plant utilisation?",
+      "synthetic": true
     },
     {
       "id": "kabir",
       "name": "Kabir Sethi",
       "role": "Channel manager",
       "employer": "HAVELLS",
-      "tenure": "2019–2024",
+      "tenure": "2019\u20132024",
       "topics": [
         "electricals",
         "distribution",
         "channel inventory"
       ],
-      "question": "Which signs distinguish dealer restocking from consumer demand?"
+      "question": "Which signs distinguish dealer restocking from consumer demand?",
+      "synthetic": true
     },
     {
       "id": "sana",
       "name": "Sana Ali",
       "role": "Credit manager",
       "employer": "FEDERALBNK",
-      "tenure": "2018–2023",
+      "tenure": "2018\u20132023",
       "topics": [
         "banking",
         "credit",
         "underwriting"
       ],
-      "question": "Which early signals do underwriters watch when a loan book grows?"
+      "question": "Which early signals do underwriters watch when a loan book grows?",
+      "synthetic": true
     },
     {
       "id": "ira",
       "name": "Ira Sen",
       "role": "Grid planning engineer",
       "employer": "TATAPOWER",
-      "tenure": "2018–2022",
+      "tenure": "2018\u20132022",
       "topics": [
         "power",
         "transmission",
         "grid planning"
       ],
-      "question": "What typically determines the lead time of a grid upgrade?"
+      "question": "What typically determines the lead time of a grid upgrade?",
+      "synthetic": true
     },
     {
       "id": "neel",
       "name": "Neel Roy",
       "role": "Clinical operations lead",
       "employer": "SYNGENE",
-      "tenure": "2016–2023",
+      "tenure": "2016\u20132023",
       "topics": [
         "life sciences",
         "clinical research"
       ],
-      "question": "Which milestones most often alter a research contract timeline?"
+      "question": "Which milestones most often alter a research contract timeline?",
+      "synthetic": true
     },
     {
       "id": "rhea",
       "name": "Rhea Kapur",
       "role": "Product manager",
       "employer": "POLYCAB",
-      "tenure": "2017–2024",
+      "tenure": "2017\u20132024",
       "topics": [
         "electricals",
         "cables",
         "distribution"
       ],
-      "question": "How does the mix of institutional and retail orders affect lead times?"
+      "question": "How does the mix of institutional and retail orders affect lead times?",
+      "synthetic": true
     },
     {
       "id": "amit",
       "name": "Amit Vyas",
       "role": "Plant manager",
       "employer": "FINEORG",
-      "tenure": "2019–2023",
+      "tenure": "2019\u20132023",
       "topics": [
         "specialty chemicals",
         "process yields"
       ],
-      "question": "Which process changes take longest to validate at scale?"
+      "question": "Which process changes take longest to validate at scale?",
+      "synthetic": true
     },
     {
       "id": "asha",
       "name": "Asha Das",
       "role": "Credit analyst",
       "employer": "HDFCBANK",
-      "tenure": "2017–2022",
+      "tenure": "2017\u20132022",
       "topics": [
         "banking",
         "underwriting",
         "credit"
       ],
-      "question": "How do underwriting teams interpret early delinquencies?"
+      "question": "How do underwriting teams interpret early delinquencies?",
+      "synthetic": true,
+      "employment": [
+        {
+          "employer": "HDFCBANK",
+          "role": "Credit analyst",
+          "start": "2017-01-01",
+          "end": "2022-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Acme Controls (fictional)",
+          "role": "Risk adviser",
+          "start": "2023-01-01",
+          "end": "2024-12-31",
+          "precision": "year"
+        }
+      ]
     }
   ],
   "edges": [

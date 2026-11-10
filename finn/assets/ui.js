@@ -39,6 +39,9 @@ export function deltaText(f, short = false) {
   return short ? `${f.points} pp ${f.position}` : `${f.points} percentage points ${f.position} the ${bound} bound.`;
 }
 const records = new Map();
+let canReview = false;
+export function setWorkspaceAccess(value) { canReview=Boolean(value); }
+export function getRecord(id) { return records.get(id)?.data; }
 let recordIds = new WeakMap();
 let nextId = 0;
 export function clearRecords() {
@@ -73,21 +76,31 @@ export function openSheet(id) {
     const url = new URL(d.url);
     if (!['https:'].includes(url.protocol)) return;
     if (d.page) url.hash = 'page=' + d.page;
-    const location = [d.page ? 'PDF page ' + d.page : '', d.locator].filter(Boolean).join(' · ');
+    const sourceLocation = [d.page ? 'PDF page ' + d.page : '', d.locator].filter(Boolean).join(' · ');
     const evidenceKind = d.kind === 'EOD market data' ? 'Market data' : 'Primary evidence';
+    const cached=d.cached_url && /^\/api\/documents\/[a-zA-Z0-9-]+\/original\?revision=[a-f0-9]{64}$/.test(d.cached_url)?new URL(d.cached_url,window.location.origin):null;
+    if(cached && d.page)cached.hash='page='+d.page;
     content = `<div class="kicker">${evidenceKind}</div><h2 id="sheet-title">${esc(d.title)}</h2>
       <p class="muted">${esc(d.symbol)} · ${esc(d.kind)} · ${esc(dateLabel(d.date))}</p>
+      ${d.date_note?`<p class="coverage">${esc(d.date_note)}</p>`:''}
       ${d.excerpt_type === 'summary' ? `<h3>Indexed summary</h3><p>${esc(d.excerpt)}</p>` :
         d.excerpt ? `<blockquote>${esc(d.excerpt)}</blockquote>` : ''}
-      <p class="source-locator">${icon('book')} ${esc(location || 'Original document')}</p>
-      <a class="button primary" href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">Open original ${icon('external')}</a>
+      <p class="source-locator">${icon('book')} ${esc(sourceLocation || 'Original document')}</p>
+      ${cached?`<a class="button primary" href="${esc(cached.href)}" target="_blank" rel="noopener noreferrer">Open cached original ${icon('file')}</a>`:''}
+      <a class="button ${cached?'secondary':'primary'}" href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">Open original ${icon('external')}</a>
       <p class="url-host">${esc(url.hostname)}</p>
+      ${d.versions?.length>1?`<details><summary>Recorded filing versions · ${d.versions.length}</summary>${d.versions.map(v=>`<p>${esc(dateLabel(v.date))} · ${esc(v.title)}</p><a class="text-button" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer">Open original</a>`).join('')}</details>`:''}
+      ${canReview && d.page && d.excerpt && d.excerpt_type!=='summary' && ['Annual report','Earnings call'].includes(d.kind)?`<button type="button" class="text-button" data-review-source="${esc(id)}">Use passage in a reviewed fact</button>`:''}
       ${d.related ? `<a class="text-button" href="${esc(d.related.url)}" target="_blank" rel="noopener noreferrer">${esc(d.related.title)} ${icon('external',15)}</a>` : ''}`;
   } else {
-    content = `<div class="kicker">Fictional demo contact</div><h2 id="sheet-title">${esc(d.name)}</h2>
+    content = `<div class="kicker">${d.fictional?'Fictional demo contact':'Permissioned network profile'}</div><h2 id="sheet-title">${esc(d.name)}</h2>
       <p class="muted">${esc(d.role)} · ${esc(d.company)} · ${esc(d.tenure)}</p>
       <h3>Connection</h3><ol class="path">${d.path.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
-      <h3>Experience</h3><p>${esc(d.topics.join(' · '))}</p><h3>A question to ask</h3><blockquote>${esc(d.question)}</blockquote>`;
+      <h3>Experience</h3><p>${esc(d.topics.join(' · '))}</p>
+      ${d.employment?.length>1?`<details><summary>Employment history</summary>${d.employment.map(e=>`<p>${esc(e.role)} · ${esc(e.employer)} · ${esc(e.start||'Date unverified')}–${esc(e.end||'present')}</p>`).join('')}</details>`:''}
+      ${d.education?.length?`<h3>Education</h3><p>${esc(d.education.join(' · '))}</p>`:''}
+      <h3>A question to ask</h3><blockquote>${esc(d.question)}</blockquote>
+      ${d.can_edit?`<details class="contact-notes"><summary>Private contact note</summary><form id="contact-note-form" class="stack"><input type="hidden" name="person" value="${esc(d.id)}"><input type="hidden" name="record" value="${esc(id)}"><label>Last contact<input type="date" name="last_contact" max="${new Date().toISOString().slice(0,10)}" value="${esc(d.last_contact||'')}"></label><label>Note<textarea name="note" rows="3" maxlength="2000">${esc(d.note||'')}</textarea></label><button type="submit" class="button secondary">Save private note</button><p id="contact-note-status" role="status"></p></form><button type="button" class="text-button" data-delete-person="${esc(d.id)}">Withdraw this profile and its links</button></details>`:''}`;
   }
   document.querySelector('#sheet-body').innerHTML = `<button type="button" class="close" aria-label="Close panel">${icon('close')}</button>${content}`;
   const dialog = document.querySelector('#sheet');

@@ -1,11 +1,14 @@
-import {clearRecords, esc, nav, openSheet, route} from './ui.js?v=0.5.0';
-import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.5.0';
-import {liveBriefView} from './live-view.js?v=0.5.0';
+import {clearRecords, esc, nav, openSheet, route, getRecord, setWorkspaceAccess} from './ui.js?v=0.6.0.2';
+import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.6.0.2';
+import {liveBriefView} from './live-view.js?v=0.6.0.2';
+import {workspaceNotice, workspaceView} from './workspace-view.js?v=0.6.0.2';
+import {identityResult} from './network-view.js?v=0.6.0.2';
 
 const workspace = document.querySelector('#workspace');
 const sheet = document.querySelector('#sheet');
 const scrollPositions = new Map();
 let catalog;
+let session;
 let activeResearch;
 let revision = 0;
 let activeHash = '';
@@ -80,8 +83,10 @@ async function api(path, params = {}, options = {}) {
   const url = new URL('/api/' + path, location.origin);
   Object.entries(params).forEach(([key,value]) => { if (value) url.searchParams.set(key,value); });
   const response = await fetch(url,{...options,headers:{Accept:'application/json',
+    ...(session?.csrf && options.method?{'X-FINN-CSRF':session.csrf}:{}),
     ...(options.body ? {'Content-Type':'application/json'} : {})}});
   if (!response.ok) {
+    if (response.status===401) {session=null;catalog=null;activeResearch=null;clearRecords();}
     const error = await response.json().catch(()=>({}));
     throw new Error(typeof error.detail === 'string' ? error.detail : 'The request could not be completed.');
   }
@@ -98,9 +103,14 @@ async function render() {
   nav(view);
   workspace.setAttribute('aria-busy','true');
   try {
+    if (session?.authenticated && session.expires*1000<=Date.now()) {
+      session=null; catalog=null; activeResearch=null; clearRecords();
+    }
+    session ||= await api('session');
     catalog ||= await api('catalog');
     if (version!==revision) return;
     const readOnly=Boolean(catalog.runtime?.read_only);
+    setWorkspaceAccess(session.authenticated && !readOnly);
     if (readOnly && view==='brief' && !params.has('mode')) {
       params.set('mode','replay');
       if (!params.has('window')) params.set('window','7d');
@@ -112,28 +122,30 @@ async function render() {
       const mode=params.get('mode') || 'live';
       const data=await api('brief',{mode,window:params.get('window') || '24h',
         start:params.get('start'),end:params.get('end')});
-      draw=()=>mode==='live' ? liveBriefView(data,params,params.get('window')==='custom',{readOnly}) :
+      draw=()=>mode==='live' ? liveBriefView(data,params,params.get('window')==='custom',{readOnly,autoRefresh:catalog.runtime.scheduled_refresh}) :
         briefView(data,params,params.get('window')==='custom');
       if (mode==='live') {
         liveSignature=signature({job:data.job,unread:data.alerts.filter(a=>!a.seen).length});
       }
     } else if (view==='research') {
       const symbol=params.get('ticker') || 'INFY';
-      const data=await api('research/'+encodeURIComponent(symbol),{q:params.get('q'),lens:params.get('lens')});
-      draw=()=>{activeResearch=data;return researchView(data,catalog,{aiOpen:aiWasOpen || params.get('ai')==='1',readOnly});};
+      const data=await api('research/'+encodeURIComponent(symbol),{q:params.get('q'),lens:params.get('lens'),as_of:params.get('as_of')});
+      draw=()=>{activeResearch=data;return researchView(data,catalog,{aiOpen:aiWasOpen || params.get('ai')==='1',readOnly,topic:params.get('topic')||'business'});};
     } else if (view==='people') {
       const q=params.get('q')||'',symbol=params.get('symbol')||'';
       const data=await api('people',{q,symbol});
       draw=()=>peopleView(data,q,symbol,catalog);
     } else if (view==='portfolio') {
       draw=()=>portfolioView(catalog);
+    } else if (view==='account') {
+      draw=()=>workspaceView(session);
     } else {
       throw new Error('This view is unavailable.');
     }
     if (version!==revision) return;
     clearRecords();
-    workspace.innerHTML=(readOnly ? '<aside class="demo-notice" aria-label="Public demo"><strong>Public demo · Read only</strong><span>Historical evidence · Fictional network</span></aside>' : '')+draw();
-    const mode = view === 'research' ? 'Document index' : view === 'people' ? 'Fictional network' :
+    workspace.innerHTML=workspaceNotice(session)+draw();
+    const mode = view === 'research' ? 'Document index' : view === 'people' ? 'Professional network' :
       view === 'brief' && params.get('mode')!=='replay' ? 'Live sources' : 'Historical replay';
     document.querySelector('#mode-text').textContent = mode;
     document.title=(workspace.querySelector('h1')?.textContent || 'Portfolio brief')+' · FINN';
@@ -157,6 +169,40 @@ async function render() {
 document.addEventListener('click',event=>{
   const target=event.target.closest('button, a, dialog');
   if (!target) return;
+  if (target.id==='open-workspace') {
+    target.disabled=true;
+    api('session',{}, {method:'POST'}).then(data=>{session={...data,runtime:session?.runtime};catalog=null;render();}).catch(error=>{
+      target.disabled=false;target.closest('aside')?.insertAdjacentHTML('beforeend',`<p role="alert">${esc(error.message)}</p>`);
+    });return;
+  }
+  if (target.id==='export-workspace') {
+    api('workspace/export').then(data=>{
+      const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+      const a=document.createElement('a');a.href=url;a.download='finn-workspace.json';a.click();URL.revokeObjectURL(url);
+      document.querySelector('#workspace-status').textContent='Exported this workspace without access credentials.';
+    }).catch(error=>{document.querySelector('#workspace-status').textContent=error.message;});return;
+  }
+  if (target.hasAttribute('data-review-candidate') || target.hasAttribute('data-review-source')) {
+    const candidate=target.hasAttribute('data-review-candidate')?activeResearch.structured.candidates[Number(target.dataset.reviewCandidate)]:null;
+    const source=candidate?.source || getRecord(target.dataset.reviewSource);
+    const editor=document.querySelector('#fact-editor'), form=document.querySelector('#fact-form');
+    if (source && editor && form) {
+      sheet.close();editor.open=true;
+      form.elements.source_id.value=source.id;form.elements.page.value=source.page;
+      form.elements.quote.value=(candidate?.quote||source.excerpt||'').replace(/^…|…$/g,'');
+      form.elements.published.value=/^\d{4}-\d{2}-\d{2}$/.test(source.date)?source.date:'';
+      form.elements.kind.value=candidate?.kind||'guidance';form.elements.speaker.value=candidate?.speaker==='Unidentified'?'':candidate?.speaker||'';
+      form.elements.speaker_kind.value=candidate?.speaker_kind||'unidentified';form.elements.reviewed.checked=false;
+      if(candidate?.suggested)for(const [key,value] of Object.entries(candidate.suggested)){if(form.elements[key])form.elements[key].value=value;}
+      editor.scrollIntoView({block:'start'});form.elements.quote.focus();
+    }return;
+  }
+  if (target.hasAttribute('data-delete-fact')) {
+    api('research/'+encodeURIComponent(activeResearch.company.symbol)+'/facts/'+encodeURIComponent(target.dataset.deleteFact),{}, {method:'DELETE'}).then(()=>render()).catch(error=>{target.textContent=error.message;});return;
+  }
+  if (target.hasAttribute('data-delete-person')) {
+    api('people/'+encodeURIComponent(target.dataset.deletePerson),{}, {method:'DELETE'}).then(()=>{sheet.close();render();}).catch(error=>{target.textContent=error.message;});return;
+  }
   if (target.hasAttribute('data-sheet')) { openSheet(target.dataset.sheet); return; }
   if (target.matches('.close') || (event.target===sheet && target===sheet)) { sheet.close(); return; }
   if (target.id==='retry') { render(); return; }
@@ -224,7 +270,34 @@ document.addEventListener('submit',async event=>{
   const fields=new FormData(form);
   const field=k=>String(fields.get(k)||'').trim();
   event.preventDefault();
-  if (form.id==='date-form') {
+  if (form.id==='fact-form') {
+    const low=field('low'), value={kind:field('kind'),metric:field('metric'),period:field('period'),unit:field('unit'),scope:field('scope'),basis:field('basis'),speaker:field('speaker'),speaker_kind:field('speaker_kind'),source_id:field('source_id'),page:Number(field('page')),quote:field('quote'),published:field('published'),reviewed:fields.has('reviewed'),low,high:field('high')||low};
+    try {await api('research/'+encodeURIComponent(activeResearch.company.symbol)+'/facts',{}, {method:'POST',body:JSON.stringify(value)});await render();}
+    catch(error){document.querySelector('#fact-status').textContent=error.message;}
+  } else if (form.id==='asof-form') {
+    location.hash=route('research',{ticker:activeResearch.company.symbol,as_of:field('as_of'),q:params.get('q'),topic:params.get('topic')});
+  } else if (form.id==='identity-form') {
+    try {const result=await api('people/resolve',{name:field('name'),employer:field('employer'),role:field('role'),on:field('on')});document.querySelector('#identity-result').innerHTML=identityResult(result);}
+    catch(error){document.querySelector('#identity-result').textContent=error.message;}
+  } else if (form.id==='contact-note-form') {
+    try {await api('people/'+encodeURIComponent(field('person'))+'/note',{}, {method:'PUT',body:JSON.stringify({note:field('note'),last_contact:field('last_contact')||null})});
+      const record=getRecord(field('record'));if(record){record.note=field('note');record.last_contact=field('last_contact');}
+      document.querySelector('#contact-note-status').textContent='Saved in this workspace.';
+    } catch(error){document.querySelector('#contact-note-status').textContent=error.message;}
+  } else if (form.id==='network-import-form') {
+    const result=document.querySelector('#network-import-status');
+    try {const file=fields.get('network');if(!file?.size||file.size>256*1024)throw new Error('Choose a JSON file smaller than 256 KiB.');
+      const value=JSON.parse(await file.text());value.replace=fields.has('replace');
+      const info=await api('network/import',{}, {method:'POST',body:JSON.stringify(value)});result.textContent='Imported '+info.imported+' profiles into this workspace.';
+    } catch(error){result.textContent=error.message;}
+  } else if (form.id==='portfolio-form') {
+    try {await api('portfolio',{}, {method:'PUT',body:JSON.stringify({symbols:field('symbols').split(/[\s,]+/).filter(Boolean).map(s=>s.toUpperCase())})});catalog=null;await render();}
+    catch(error){document.querySelector('#portfolio-status').textContent=error.message;}
+  } else if (form.id==='delete-workspace-form') {
+    if (!fields.has('confirm')) return;
+    try {await api('workspace',{}, {method:'DELETE'});session=null;catalog=null;activeResearch=null;clearRecords();await render();}
+    catch(error){document.querySelector('#workspace-status').textContent=error.message;}
+  } else if (form.id==='date-form') {
     const start=field('start'),end=field('end');
     form.elements.end.setCustomValidity(start>end?'End date must be on or after the start date.':'');
     if (form.reportValidity()) location.hash=route('brief',{mode:params.get('mode')||'live',window:'custom',start,end});
@@ -236,7 +309,7 @@ document.addEventListener('submit',async event=>{
     form.elements.ticker.setCustomValidity(/^[A-Z0-9][A-Z0-9&.-]{0,24}$/.test(symbol)?'':'Choose a listed suggestion or enter an NSE ticker.');
     if (form.reportValidity()) location.hash=route('research',{ticker:symbol});
   } else if (form.id==='evidence-form') {
-    location.hash=route('research',{ticker:activeResearch.company.symbol,lens:params.get('lens'),q:field('term')});
+    location.hash=route('research',{ticker:activeResearch.company.symbol,lens:params.get('lens'),q:field('term'),as_of:params.get('as_of'),topic:params.get('topic')});
   } else if (form.id==='people-form') {
     location.hash=route('people',{q:field('q'),symbol:params.get('symbol')});
   } else if (form.id==='alert-rule-form') {

@@ -13,7 +13,7 @@ class PublicRuntimeTests(unittest.TestCase):
     def setUp(self):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
-        env = patch.dict(os.environ, {"FINN_DATA_DIR": folder.name, "FINN_PUBLIC_DEMO": "1",
+        env = patch.dict(os.environ, {"FINN_DATA_DIR": folder.name, "FINN_PUBLIC_DEMO": "1", "FINN_INTERACTIVE_DEMO": "0",
                                      "FINN_ENABLE_LLM": "1", "FINN_AUTO_REFRESH": "1",
                                      "GEMINI_API_KEY": "fixture-never-real"})
         env.start()

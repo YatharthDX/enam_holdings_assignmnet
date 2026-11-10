@@ -1,12 +1,8 @@
-# FINN: reviewer quickstart
+# FINN reviewer quickstart
 
-FINN's core prototype requires no LLM credentials. It combines a portfolio brief, source-backed research and a clearly fictional professional network. Optional AI synthesis is off by default.
+FINN links a material portfolio filing to primary evidence and a relevant person. The core needs no LLM key. Data/source dates and synthetic contacts are labelled.
 
-The hosted public presentation opens a dated historical replay. It is read-only: evidence, comparisons and fictional connections work, while fresh indexing, live acquisition and alert changes require the local workspace below. Public mode forces AI off at the server. See [deployment](docs/DEPLOYMENT.md) and the [remaining release checks](docs/RELEASE_CHECKLIST.md).
-
-## Start a fresh clone
-
-Requirements: Docker with Compose. From the repository root:
+## Start
 
 ```bash
 cp .env.example .env
@@ -14,47 +10,42 @@ docker compose up --build --wait
 curl -fsS http://localhost:8090/health
 ```
 
-Health should report version `0.5.0`, `public_demo:false` and `llm_enabled:false`. No model key is required. The first build needs Docker Hub/PyPI access. Port 8090 can be changed with `FINN_PORT`.
+Expect version `0.6.0`, `public_demo:false`, `llm_enabled:false`. Existing M5 users should preserve their `.env` and use [the upgrade steps](docs/UPGRADE_M6.md), including the existing-image override.
 
-Existing users applying the update should follow the cached-image instructions in README. The ZIP preserves an existing `.env`; set `FINN_PUBLIC_DEMO=0` for full local controls and `FINN_ENABLE_LLM=0` to keep the secondary feature disabled.
+Open http://localhost:8090. Anonymous visitors can inspect the supplied evidence/network; **Open my workspace** creates an isolated 24-hour demo workspace without email or keys. Export useful notes/facts before expiry. This is browser-possession access, not a verified investor account.
 
-## Three-minute core review
+## Core review
 
-1. [Historical brief, seven-day window](http://localhost:8090/#brief?mode=replay&window=7d): inspect a material result and lower-priority disclosures. Open the original evidence and a relevant fictional contact.
-2. [INFY research](http://localhost:8090/#research?ticker=INFY): compare original/revised FY25 guidance with the reported outcome. The arithmetic is deterministic and the historical period is labelled. Open a forecast source and the outcome source to inspect quotes and PDF pages.
-3. Search `currency` or choose the `guidance` topic. Inspect a page-linked passage, then the original PDF.
-4. Open **Who can help?** or query **People** by company/topic. Inspect direct and recorded two-hop paths. All 12 profiles are fictional.
+1. **Brief → Historical replay → 7 days**: inspect a material filing, routine disclosures and a fictional contact. All 16 holdings are visible from Portfolio.
+2. **Research → INFY**: inspect four FY25 guidance revisions and the 4.2% outcome. Compare original 1–3% (+1.2 pp above the upper bound) with final 4.5–5% (0.3 pp below the lower bound). Open quoted evidence and original PDF pages.
+3. Search `currency`; open a hit and its original. Three off-portfolio examples are LTTS, SRF and HAVELLS.
+4. Enter a different NSE ticker, choose **Find documents**, wait for status and inspect its exact business/outlook/cash/risk passages. These are extractive passages, not generated financial opinions.
+5. Expand **Statements to review**, inspect an original and choose **Review fields**. Confirm the exact quote, numeric values, fiscal period, speaker authority, units, scope, currency basis and publication date. Save a guidance statement and a compatible actual. **Promises and delivery** compares them deterministically for any indexed ticker.
+6. Apply an earlier **Evidence available by** date. Later/undated evidence is excluded. A private, explicitly confirmed publication date applies only to the reviewer's fact.
+7. **People**: search IT delivery or SRF. Inspect direct/two-hop paths. Try identity checking with Mira Shah / INFY / Delivery lead / 2022-01-01. Name, employer, role and recorded tenure must corroborate a match.
+8. Save a fictional contact's private note and last-contact date. In a separate browser/incognito workspace, verify that note is absent. Each workspace has its own holdings, alert preferences/history, profiles and facts.
+9. **Workspace**: download/import the fictional JSON example, inspect export and erasure controls. Correction merges by profile ID; withdrawing a profile removes its owned links and notes.
+10. **Brief → Live sources**: inspect fresh-source status, completed sessions and alert settings. Refresh needs public-source connectivity; failures stay explicit. Do not treat the historical replay as current data.
 
-## Review public-source acquisition
+Generic arithmetic requires human-reviewed facts. Missing or mismatched periods/bases, unknown authority, changed sources or conflicting actuals do not receive a successful comparison. QoQ/YoY needs matching quarterly baselines; percentage metrics use pp differences.
 
-Enter another NSE ticker in Research and select **Find documents**. FINN discovers the latest annual-report original and up to four transcript originals, indexes selectable PDF text, then supports keyword search with source/page links. Discovery uses Screener as a link index; it does not import its summaries, financial tables, broker commentary or news as evidence.
-
-**Brief → Live sources** shows current filing acquisition, completed daily market sessions, alert controls and provider freshness/coverage. These operations need public NSE/Yahoo/Screener access. Errors and partial coverage stay visible; fictional fixtures are never supplied as live data. A zero count with incomplete coverage is not proof of no filings.
-
-Generic document retrieval/search works for indexed tickers. Structured deterministic financial/guidance comparison has a curated historical Infosys example; the prototype does not claim automated comparison for every issuer. Other supplied snapshots are explicitly historical.
-
-## Run checks without external API costs
+## Checks
 
 ```bash
 docker compose exec -T app python -m unittest discover -s tests -v
 docker compose exec -T app python -m finn.smoke
+docker compose exec -T app python -m finn.acceptance --sessions-only
+docker compose exec -T app python -m finn.acceptance --ticker HCLTECH --query revenue
 ```
 
-Tests use controlled upstream/model responses and make no real generation requests. They cover HTTP entry points, PDF ingestion/search, comparison boundaries, network paths, provider failures, optional-feature isolation, blocked generation while disabled, both model transports and cache/ownership behavior.
+Include both Compose `-f` arguments if using the existing-image override. Tests use controlled external responses and no real generation. Smoke uses GETs only. Session acceptance creates two disposable workspaces, checks private-note isolation and erases only those test workspaces. It skips legacy M5 adoption.
 
-The smoke command reads the running app's endpoints without starting discovery, refresh or analysis. For a deployed public URL use `python -m finn.smoke --base-url https://YOUR-SERVICE.onrender.com --expect-public-demo --timeout 60` after its first cold start.
+Ticker acceptance explicitly starts public document acquisition. Pick a document-rich NSE ticker outside the 19 seed names with no existing source cache. It reports source/page/search coverage and a cold-cache flag. Partial sources/no phrase matches are reported as partial, not silently passed. It does not create reviewed financial facts or demonstrate automated semantic extraction.
 
-## Optional AI review
+## Public demo and optional model
 
-The primary workflows above are sufficient to inspect the working prototype without a model provider. The collapsed **Optional AI synthesis** section below evidence search adds a generated reading only if enabled.
+The provided Render configuration opens an anonymous historical preview and allows isolated synthetic workspaces, bounded discovery/refresh and private controls. AI and scheduled acquisition are forced off. Free-host state may disappear; the dated source seeds remain. A strictly read-only public setting is also available. See [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-1. Set `FINN_ENABLE_LLM=1` in `.env`.
-2. Set either `GEMINI_API_KEY` or `OPENAI_API_KEY`. `FINN_LLM_PROVIDER=auto` uses the available key and prefers Gemini if both exist; explicit `gemini` / `openai` selects only that provider.
-3. Recreate the container: `docker compose up -d --force-recreate --wait`.
-4. Expand **Optional AI synthesis**, choose a lens and explicitly select **Analyze documents**. Inspect its quotations, source pages and limitations. Reopening a saved lens makes no new model call.
+Local optional Gemini/OpenAI synthesis is collapsed and off by default. To try it, set `FINN_ENABLE_LLM=1`, select the provider and add its server-side key to the ignored `.env`, then recreate the container. Explicitly press Analyze; no generation occurs merely by opening the section. A provider error does not obstruct the main workflows. No automatic paid fallback exists.
 
-Opening the optional section never triggers generation. A provider error or invalid optional configuration does not prevent primary research. Keys stay server-side. Provider access/quotas are the reviewer's responsibility; live inference was not run during build verification. There is no automatic retry or paid fallback. Keep Gemini billing disabled when zero spend is required.
-
-`GET /api/llm/status` is read-only. `python -m finn.diagnose` performs metadata access only when optional AI is enabled and never generates an answer. The README describes provider setup, data/privacy boundaries and architectural limitations.
-
-This is a local single synthetic workspace, without production investor authentication or tenant isolation. No real contact data are included.
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md), [PLAN_AUDIT.md](docs/PLAN_AUDIT.md) and [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) for isolation boundaries, source limitations and checks still requiring an actual deployment or operator.

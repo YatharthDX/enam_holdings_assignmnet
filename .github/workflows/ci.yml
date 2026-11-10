@@ -19,6 +19,7 @@ jobs:
     env:
       FINN_PORT: "8090"
       FINN_PUBLIC_DEMO: "0"
+      FINN_INTERACTIVE_DEMO: "0"
       FINN_ENABLE_LLM: "0"
       FINN_AUTO_REFRESH: "0"
     steps:
@@ -42,6 +43,15 @@ jobs:
         run: |
           docker compose up --no-build --force-recreate --wait --wait-timeout 120
           docker compose exec -T app python -m finn.smoke --expect-public-demo
+      - name: Check isolated interactive demo sessions
+        env:
+          FINN_PUBLIC_DEMO: "1"
+          FINN_INTERACTIVE_DEMO: "1"
+          FINN_ENABLE_LLM: "1"
+          GEMINI_API_KEY: "ci-fixture-never-real"
+        run: |
+          docker compose up --no-build --force-recreate --wait --wait-timeout 120
+          docker compose exec -T app python -m finn.acceptance --sessions-only
       - name: Show service logs on failure
         if: failure()
         run: docker compose logs --tail=80 app

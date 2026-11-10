@@ -4,11 +4,14 @@ import logging
 import os
 import secrets
 import threading
+import re
+import hashlib
+import time as system_time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
 
-from . import desk, live_store as store, providers
+from . import desk, live_store as store, providers, workspaces
 
 LOGGER = logging.getLogger("finn.live")
 CATEGORIES = {
@@ -91,22 +94,24 @@ def signal(rows):
 
 
 def evaluate(db, now):
-    preferences = store.settings(db)
+    preferences = workspaces.settings(db)
+    held = set(workspaces.holdings(db))
     if not preferences["enabled"]:
         return
     recent = providers.iso(now - timedelta(hours=24))
     for saved in db.execute("SELECT body FROM live_filings WHERE published>=? AND published<=?",
                             (recent, providers.iso(now))).fetchall():
         row = json.loads(saved["body"])
+        if row["symbol"] not in held:
+            continue
         category, _, _, _ = classify(row["title"], row["details"])
         if category in preferences["categories"]:
             put_alert(db, "filing-" + row["id"], row["published"], now, {
                 "kind": "filing", "symbol": row["symbol"], "title": row["title"],
                 "reason": CATEGORIES[category], "source": source_of(row)
             })
-    for symbol, company in desk.COMPANIES.items():
-        if not company["holding"]:
-            continue
+    for symbol in sorted(held):
+        company = desk.COMPANIES.get(symbol, {"name": symbol})
         item = signal(store.bars(db, symbol))
         if item is None:
             continue
@@ -137,6 +142,12 @@ def put_alert(db, event_id, event_at, now, data):
     # The event identity survives retries and preference changes. A new filing,
     # session or signal type can alert once. Seen alerts stay seen after refresh.
     data = {**data, "id": event_id, "event_at": event_at}
+    if workspaces.private():
+        db.execute("INSERT INTO workspace_alerts VALUES(?,?,?,?,?,0) ON CONFLICT(workspace,id) DO UPDATE SET body=excluded.body",
+                   (workspaces.current(), event_id, event_at, providers.iso(now), json.dumps(data)))
+        return
+    if workspaces.current() == "public":
+        return
     db.execute("""INSERT INTO live_alerts VALUES(?, ?, ?, ?, 0)
         ON CONFLICT(id) DO UPDATE SET body=excluded.body""",
                (event_id, event_at, providers.iso(now), json.dumps(data)))
@@ -146,7 +157,10 @@ def update_settings(value, now=None):
     now = now or clock()
     with store.connection() as db:
         db.execute("BEGIN IMMEDIATE")
-        db.execute("UPDATE alert_settings SET body=? WHERE id=1", (json.dumps(value),))
+        if workspaces.private():
+            db.execute("UPDATE workspaces SET settings=? WHERE id=?", (json.dumps(value), workspaces.current()))
+        else:
+            db.execute("UPDATE alert_settings SET body=? WHERE id=1", (json.dumps(value),))
         evaluate(db, now)
     return value
 
@@ -177,6 +191,11 @@ def refresh(now=None, filing_fetch=providers.filings, price_fetch=providers.pric
                    (token, started, providers.iso(now + timedelta(minutes=10))))
 
     holdings = {key: value for key, value in desk.COMPANIES.items() if value["holding"]}
+    with store.connection() as db:
+        workspaces.expire(db)
+        for row in db.execute("SELECT holdings FROM workspaces"):
+            for symbol in json.loads(row[0]):
+                holdings.setdefault(symbol, {"name": symbol, "symbol": symbol, "holding": True})
     errors, updated = [], 0
     try:
         today = now.astimezone(providers.IST).date()
@@ -185,7 +204,17 @@ def refresh(now=None, filing_fetch=providers.filings, price_fetch=providers.pric
             fetched = filing_fetch(holdings, first, today)
             rows = [row for row in fetched["rows"] if row["published"] <= started]
             with store.connection() as db:
+                previous_rows = {r[0]: json.loads(r[1]) for r in db.execute("SELECT id,body FROM live_filings")}
                 store.put_filings(db, rows)
+                tracked = {r[0] for r in db.execute("SELECT symbol FROM document_jobs")}
+                for filing in rows:
+                    category = classify(filing["title"], filing["details"])[0]
+                    if previous_rows.get(filing["id"]) != filing and filing["symbol"] in tracked and category in {"results", "earnings_call"}:
+                        event = filing["id"] + ":" + hashlib.sha256(json.dumps(filing, sort_keys=True).encode()).hexdigest()[:16]
+                        inserted = db.execute("INSERT OR IGNORE INTO document_refresh_events VALUES(?,?)", (event, filing["symbol"]))
+                        if inserted.rowcount:
+                            db.execute("INSERT INTO document_refresh_queue VALUES(?,?,?) ON CONFLICT(symbol) DO UPDATE SET event=excluded.event,requested=excluded.requested",
+                                       (filing["symbol"], event, started))
                 detail = fetched["warning"] or f"Requested {first} through {today}; {len(rows)} portfolio filings."
                 store.state(db, "nse", started, "ok", detail, fetched["url"], fetched["coverage"])
             if fetched["skipped"]:
@@ -224,7 +253,13 @@ def refresh(now=None, filing_fetch=providers.filings, price_fetch=providers.pric
                     with store.connection() as db:
                         store.state(db, "yahoo:" + symbol, started, "error", str(exc), url, "gap")
         with store.connection() as db:
-            evaluate(db, now)
+            active = [None, *[r[0] for r in db.execute("SELECT id FROM workspaces WHERE expires>?", (system_time.time(),))]]
+            for wid in active:
+                context = workspaces._current.set(wid)
+                try:
+                    evaluate(db, now)
+                finally:
+                    workspaces._current.reset(context)
     except Exception:
         LOGGER.exception("Live refresh failed")
         errors.append("Refresh interrupted. Cached source records remain available.")
@@ -234,7 +269,23 @@ def refresh(now=None, filing_fetch=providers.filings, price_fetch=providers.pric
                 WHERE id=1 AND token=?""",
                        ("partial" if errors else "complete", providers.iso(clock()),
                         json.dumps({"prices_updated": updated, "errors": errors}), token))
+    refresh_documents(limit=1)
     return {"status": "partial" if errors else "complete", "prices_updated": updated, "errors": errors}
+
+
+def refresh_documents(limit=1):
+    from . import discovery
+    with store.connection() as db:
+        queued = [dict(r) for r in db.execute("SELECT * FROM document_refresh_queue ORDER BY requested LIMIT ?", (limit,))]
+    for item in queued:
+        try:
+            token = discovery.begin(item["symbol"])
+            if token:
+                discovery.run(item["symbol"], token)
+                with store.connection() as db:
+                    db.execute("DELETE FROM document_refresh_queue WHERE symbol=? AND event=?", (item["symbol"], item["event"]))
+        except ValueError:
+            break
 
 
 def snapshot(window, start=None, end=None, now=None):
@@ -252,34 +303,59 @@ def snapshot(window, start=None, end=None, now=None):
         raise ValueError("Choose 24h, 7d or custom.")
     with store.connection() as db:
         db.execute("BEGIN")
+        held = set(workspaces.holdings(db))
         rows = []
         for stored in db.execute("SELECT body FROM live_filings WHERE published>=? AND published<?",
                                  (providers.iso(lower), providers.iso(upper))).fetchall():
             record = json.loads(stored["body"])
             company = desk.COMPANIES.get(record["symbol"])
-            if not company or not company["holding"]:
+            company = company or {"name": record["symbol"]}
+            if record["symbol"] not in held:
                 continue
             category, rank, priority, reason = classify(record["title"], record["details"])
             rows.append({**record, "company": company["name"], "date": record["published"],
                          "category": category, "label": CATEGORIES[category], "rank": rank,
                          "priority": priority, "reason": reason, "source": source_of(record)})
+            if category == "management_change":
+                from . import network
+                rows[-1]["management_context"] = network.incoming_person(record)
+            versions = [json.loads(r[0]) for r in db.execute("SELECT body FROM filing_versions WHERE event=?", (record["id"],))]
+            if len(versions) > 1:
+                rows[-1]["source"]["versions"] = [source_of(v) for v in versions]
         rows.sort(key=lambda row: row["date"], reverse=True)
         rows.sort(key=lambda row: row["rank"])
         quotes = []
-        for symbol, company in desk.COMPANIES.items():
-            if company["holding"]:
-                item = signal(store.bars(db, symbol))
-                quotes.append({"symbol": symbol, "company": company["name"], **(item or {})})
-        source_status = [dict(row) for row in db.execute("SELECT * FROM source_state ORDER BY key")]
-        preferences = store.settings(db)
-        notifications = store.alerts(db)
+        for symbol in sorted(held):
+            company = desk.COMPANIES.get(symbol, {"name": symbol})
+            item = signal(store.bars(db, symbol))
+            quotes.append({"symbol": symbol, "company": company["name"], **(item or {})})
+        source_status = [dict(row) for row in db.execute("SELECT * FROM source_state ORDER BY key") if row["key"] == "nse" or row["key"][6:] in held]
+        preferences = workspaces.settings(db)
+        notifications = workspaces.alerts(db)
         progress = store.job(db)
+    raw_filings = len(rows)
+    rows = group_filings(rows)
     focus = rows[0]["symbol"] if rows else None
+    from . import network
     return {"mode": "live", "as_of": today, "now": providers.iso(now), "start": start, "end": end,
             "window_start": providers.iso(lower), "window_end": providers.iso(upper), "rows": rows,
             "focus": focus, "people": desk.people(symbol=focus)[:2] if focus else [],
             "comparison": None, "holdings": len(quotes), "quotes": quotes, "sources": source_status,
-            "settings": preferences, "alerts": notifications, "job": progress, "categories": CATEGORIES}
+            "settings": preferences, "alerts": notifications, "job": progress, "categories": CATEGORIES,
+            "reconnect": network.reconnect(focus, providers.iso(now)) if focus else [], "filing_count": raw_filings}
+
+
+def group_filings(rows):
+    """Group exact metadata duplicates; preserve distinct/amended statements."""
+    grouped = {}
+    for row in rows:
+        key = (row["symbol"], row["published"][:10], " ".join(row["title"].casefold().split()),
+               " ".join(row["details"].casefold().split()))
+        if key not in grouped:
+            grouped[key] = {**row, "other_sources": []}
+        else:
+            grouped[key]["other_sources"].append(row["source"])
+    return list(grouped.values())
 
 
 class Refresher:
@@ -300,6 +376,8 @@ class Refresher:
         while not self.stop_event.is_set():
             try:
                 refresh()
+                with store.connection() as db:
+                    workspaces.expire(db)
             except Exception:
                 LOGGER.exception("Scheduled refresh interrupted; retrying on the next interval")
             self.stop_event.wait(interval)

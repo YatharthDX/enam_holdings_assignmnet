@@ -1,61 +1,73 @@
 # Publish the phone demo
 
-The main workspace runs locally with a persistent Docker volume. The public presentation uses only the dated historical source set and fictional profiles. Public mode provides no investor authentication or private storage: it blocks all HTTP writes, turns off automatic acquisition, and forces the model integration off. Use a fresh deployment with the supplied synthetic seeds.
+The provided `render.yaml` requests one Free Docker web service, with **public interactive synthetic workspaces** and no model keys, paid database, disk or scheduler. Local persistent Docker remains the best development workspace. Public free-host state is ephemeral.
 
-## Check locally first
+## Check the integrated release locally
 
-In your existing `.env`, keep full local controls:
+Follow [UPGRADE_M6.md](UPGRADE_M6.md). Keep local flags:
 
 ```dotenv
 FINN_PUBLIC_DEMO=0
+FINN_INTERACTIVE_DEMO=0
+FINN_TRUST_PROXY=0
 FINN_ENABLE_LLM=0
 ```
 
-```bash
-export FINN_PORT=8090
-docker compose -f compose.yaml -f compose.local.yaml up --no-build --pull never --force-recreate --wait
-docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m unittest discover -s tests -v
-docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.smoke
-```
+Confirm `/health` version `0.6.0`. Run the container suite, smoke and `python -m finn.acceptance --sessions-only`. A fresh machine uses the normal Docker build from README; the cached-image override requires an existing compatible image.
 
-The cached-image override needs your previously built `enamholdings-app:latest` image. A new machine uses `cp .env.example .env` and `docker compose up --build --wait` instead. Do not overwrite an existing `.env` or remove its data volume to update.
+## Render Free
 
-## Render Free: a hosted link
-
-1. Commit the update and push the full repository to GitHub. The required public repository URL is also a submission deliverable. Keep `.env` and `.finn/` excluded. The included Actions workflow will build/test the real container after the push; inspect that run before calling CI verified.
-2. Sign in to Render. Create a **Blueprint** from that repository, using `render.yaml` in the root. The Blueprint requests a single Docker web service on the **Free** plan. Inspect the resources before creation: no paid plan, persistent disk, database or other paid service is included. Do not add a payment method for this zero-spend route. If Free is unavailable for your account without payment details, use the temporary option below.
-3. Keep `FINN_PUBLIC_DEMO=1`, `FINN_ENABLE_LLM=0`, `FINN_AUTO_REFRESH=0` and `PORT=8080` as declared. Add no Gemini/OpenAI secret. Render builds the existing Dockerfile and checks `/health`.
-4. When deployment succeeds, copy the actual `https://...onrender.com` URL. A public URL has not been created merely by adding the Blueprint file.
-5. Open the URL on a phone. The default view must be the historical seven-day brief with **Public demo · Read only** visible. Inspect INFY guidance, an original source page, and a fictional contact. Also test People search and an empty research ticker.
-6. Check `/health`: `version` must be `0.5.0`, `public_demo` true and `llm_enabled` false. Verify the running hosted API from the local container:
+1. Commit/push the full repository to public GitHub. Exclude `.env`, private exports, SQLite files and cached originals. Inspect the actual Actions run; configuration alone is not a passing run.
+2. In Render create a Blueprint from the repository/root `render.yaml`. Inspect the resource list: one Free web service, no paid add-ons. Keep the zero-spend route free of payment details; if the account cannot use Free without them, use the temporary option below.
+3. Keep `PORT=8080`, `FINN_PUBLIC_DEMO=1`, `FINN_INTERACTIVE_DEMO=1`, `FINN_TRUST_PROXY=1`, `FINN_ENABLE_LLM=0`, `FINN_AUTO_REFRESH=0`. Do not add model keys. The Blueprint sets these values. Render terminates HTTPS at its edge; the trusted-proxy flag lets cookie/origin validation use its forwarded HTTPS scheme.
+4. Wait for build/health success and copy the actual returned HTTPS URL. No deployment exists merely because the Blueprint is committed.
+5. Open that URL in a fresh browser. The initial view is the dated seven-day historical brief. Inspect the guidance/source/contact path, then **Open my workspace**. Check private note and alert controls. Another browser must not see that private note.
+6. Test generic document discovery if upstreams are accessible from the host. It is bounded to five starts/workspace/hour and 20 globally/hour. Manual live refresh is globally limited to once/15 minutes. Models and scheduled source acquisition remain disabled even if someone misconfigures their enable flags.
+7. Check `/health`: version `0.6.0`, public true, LLM false. Run against the actual origin:
 
 ```bash
-docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.smoke \
-  --base-url https://YOUR-SERVICE.onrender.com --expect-public-demo --timeout 60
+python -m finn.smoke --base-url https://YOUR-SERVICE.onrender.com --expect-public-demo --timeout 60
+python -m finn.acceptance --base-url https://YOUR-SERVICE.onrender.com --sessions-only
 ```
 
-Replace `YOUR-SERVICE` with the actual returned hostname. The smoke command makes GET requests only. It is not a substitute for testing the phone layout, live upstream access or a fresh unseen ticker in local mode.
+The smoke command uses GETs. Session acceptance creates/erases only its disposable test workspaces; no discovery or model generation is requested. A cold-ticker test must be requested separately and needs working upstream access.
 
-Free services can spin down after 15 minutes of inactivity and take about a minute to wake. Local filesystem changes are lost on restart, redeployment or spin-down. The historical source JSON and fictional network ship in the image, so this demo does not depend on ephemeral user edits or PDF downloads. No keep-alive automation is configured.
+To retain strict M5-style public read-only behavior, set `FINN_INTERACTIVE_DEMO=0`. All non-read HTTP methods are then rejected and session acceptance is intentionally unavailable.
 
-Render applies free-hour, build and bandwidth limits. Its documentation says that without a payment method excess usage causes suspension/build limits rather than supplementary charges. Check the account's current plan and usage before deploying. Availability and account eligibility remain the provider's decision.
+Free services can sleep after 15 minutes of inactivity and take time to wake. Their local filesystem can disappear on restart, redeployment or spin-down. Export useful private demo work before expiry/restart; do not place real contacts on this public host. Historical JSON evidence and fictional seeds ship with the image and survive a fresh start. No keep-alive automation is included.
 
-## Temporary HTTPS link from the Mac
+Provider eligibility/limits remain external. The Free plan has monthly service-hour/build/bandwidth limits; without a payment method the provider documents suspension/limits instead of supplementary charging. Recheck the actual account's resource plan before creation. No paid service is needed for this repository's core workflows.
 
-This is useful for a same-day phone review while the Mac is running. It is temporary and does not replace a durable submission link.
+## Temporary HTTPS from the Mac
 
-Set `FINN_PUBLIC_DEMO=1` and `FINN_ENABLE_LLM=0` in `.env`, then recreate the container with the cached-image command above. Confirm `/health` reports public mode. Install `cloudflared` using [Cloudflare's platform instructions](https://developers.cloudflare.com/tunnel/downloads/). On macOS with Homebrew:
+Useful for same-day phone review while the Mac runs; it does not replace a stable submission URL.
+
+Stop any previous tunnel first. Recreate the container with:
+
+```dotenv
+FINN_PUBLIC_DEMO=1
+FINN_INTERACTIVE_DEMO=1
+FINN_TRUST_PROXY=1
+FINN_ENABLE_LLM=0
+FINN_AUTO_REFRESH=0
+```
+
+Install `cloudflared` from [Cloudflare's official downloads](https://developers.cloudflare.com/tunnel/downloads/), or use Homebrew on macOS:
 
 ```bash
 brew install cloudflared
 cloudflared tunnel --url http://localhost:8090
 ```
 
-Open the generated HTTPS `trycloudflare.com` URL on the phone. Keep the terminal, Mac and Docker running. The URL changes on the next tunnel and stops working when the tunnel stops. Anyone with the link can access the public read-only presentation. Stop the tunnel before returning to local mode; set `FINN_PUBLIC_DEMO=0` and recreate the container to restore indexing and alert changes.
+Open the generated HTTPS URL on the phone. Keep Docker, the terminal and Mac running. Anyone with the link can inspect the public evidence and create a bounded fictional workspace. The address changes on the next tunnel; closing it stops access. Verify its HTTPS cookie/origin behavior before relying on private demo controls.
 
-## Sources checked on 10 November 2026
+Stop the tunnel before returning to local mode; reset public/interactive/proxy flags to 0 and recreate the container. This flag switch does not erase stored workspaces by itself; their normal expiry still applies. Use a separate Docker project/data volume for a completely fresh public demo if the local workspace contains real private data.
 
-- [Render Free limits and billing behavior](https://render.com/docs/free).
-- [Render Docker deployment](https://render.com/docs/docker) and [Blueprint fields](https://render.com/docs/blueprint-spec).
-- [Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) and [downloads](https://developers.cloudflare.com/tunnel/downloads/).
-- [GitHub Actions billing](https://docs.github.com/en/actions/concepts/billing-and-usage): standard hosted runners in public repositories are free. Private-repository allowances differ; no private-repository spending is requested by this guide.
+## Sources checked 10 November 2026
+
+- [Render Free limits](https://render.com/docs/free), [Docker deployment](https://render.com/docs/docker), [Blueprint specification](https://render.com/docs/blueprint-spec).
+- [Render web services and HTTPS termination](https://render.com/docs/web-services), [TLS](https://render.com/docs/tls).
+- [Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/), [downloads](https://developers.cloudflare.com/tunnel/downloads/).
+- [GitHub Actions billing](https://docs.github.com/en/actions/concepts/billing-and-usage). Standard public-repository hosted runners are free; private-repository allowances differ.
+
+No deployment, real upstream run or cloud-account action was performed merely by writing this guide.

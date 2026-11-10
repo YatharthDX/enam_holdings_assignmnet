@@ -8,6 +8,7 @@ import time
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
+from http.cookiejar import CookieJar
 from urllib.error import HTTPError
 from urllib.request import ProxyHandler, Request, build_opener
 from unittest.mock import patch
@@ -23,7 +24,7 @@ class HttpTests(unittest.TestCase):
     def setUpClass(cls):
         data = tempfile.TemporaryDirectory()
         cls.addClassCleanup(data.cleanup)
-        env = patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "0", "FINN_ENABLE_LLM": "1", "FINN_DATA_DIR": data.name, "FINN_AUTO_REFRESH": "0",
+        env = patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "0", "FINN_INTERACTIVE_DEMO": "0", "FINN_ENABLE_LLM": "1", "FINN_DATA_DIR": data.name, "FINN_AUTO_REFRESH": "0",
                                      "FINN_LLM_PROVIDER": "openai", "GEMINI_API_KEY": ""})
         env.start()
         cls.addClassCleanup(env.stop)
@@ -31,7 +32,7 @@ class HttpTests(unittest.TestCase):
         sock.bind(("127.0.0.1", 0))
         cls.base = f"http://127.0.0.1:{sock.getsockname()[1]}"
         cls.addClassCleanup(sock.close)
-        cls.server = uvicorn.Server(uvicorn.Config(app, log_level="error"))
+        cls.server = uvicorn.Server(uvicorn.Config(app, log_level="error", proxy_headers=False))
         thread = threading.Thread(target=cls.server.run, kwargs={"sockets": [sock]}, daemon=True)
         thread.start()
         cls.addClassCleanup(thread.join, 5)
@@ -41,7 +42,11 @@ class HttpTests(unittest.TestCase):
             if time.monotonic() > deadline or not thread.is_alive():
                 raise RuntimeError("Test server failed to start.")
             time.sleep(.02)
-        cls.client = build_opener(ProxyHandler({}))
+        from urllib.request import HTTPCookieProcessor
+        cls.client = build_opener(ProxyHandler({}), HTTPCookieProcessor(CookieJar()))
+        with cls.client.open(Request(cls.base + "/api/session", data=b'{}', method="POST")) as response:
+            csrf = json.load(response)["csrf"]
+        cls.client.addheaders = [("X-FINN-CSRF", csrf)]
 
     def read(self, route):
         with self.client.open(self.base + route, timeout=3) as response:

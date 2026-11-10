@@ -1,56 +1,62 @@
-# Requirement coverage and final checks
+# Requirement coverage and release acceptance
 
-The brief asks for a focused working prototype, not every research view. This file distinguishes implemented functionality from execution evidence that still needs to be collected. It does not assert that a URL has been deployed or a local checkout committed.
+M6 implements the scoped feature gaps from the original plan. This file records build evidence separately from checks that need the actual Mac, live sources, repository or hosting account. Configuration files do not constitute deployment or CI results.
 
-## Coverage against the challenge
+## Assignment coverage
 
-| Requirement | Current implementation | Status / remaining evidence |
+| Requirement | Implementation | Remaining external evidence |
 | --- | --- | --- |
-| Mobile-first prototype | Brief, Research, People, shared source/person sheets and phone navigation | Implemented; verify the actual public URL on a second phone |
-| 15–20 portfolio holdings and 3–5 ad-hoc names | 16 holdings; LTTS, SRF, HAVELLS research examples | Implemented; current source availability must be checked locally |
-| Working Push | Prioritized digest, 24h/7d/custom windows, routine group, configurable filing/price/volume alerts | Implemented and fixture-tested; reconcile one live window with the exchange |
-| Working Pull with primary evidence | Generic original-PDF discovery/indexing/search; dated snapshots; sourced INFY guidance comparison | Implemented; run an unseeded ticker against actual upstreams from an empty document cache |
-| Generalises beyond demo names | Discovery verifies the requested NSE symbol; generic PDF import and source/page search | Engine implemented; live independent-ticker acceptance remains pending |
-| Network integrated into Push/Pull and directly queryable | 12 fictional profiles, relevance reasons, explicit direct/two-hop paths | Implemented; no real profile scraping or contact import |
-| Four inputs | EOD prices, exchange announcements, originals, synthetic profiles | Adapters/seeds implemented; live connectivity is not established by fixture tests |
-| Primary sources only for Pull | Issuer originals and labelled historical excerpts | Implemented; no secondary research imported as evidence |
-| Architecture, privacy, models/agents, cloud explanation | `ARCHITECTURE.md` | Written; current controls and future private-workspace design are distinguished |
-| Phone-accessible delivery | Render Free Blueprint and temporary-tunnel instructions | Configuration prepared; actual public URL still pending |
-| Public GitHub repository | Existing operator-maintained repository workflow | Operator must commit/push and verify public access; URL not supplied here |
-| Genuine AI build history | Actual ChatGPT/coding sessions from the build | Operator must export/share, redact credentials and verify reviewer access |
-| Short covering email | `SUBMISSION_EMAIL.md` | Drafted; fill links and verification details after final checks |
+| Mobile-first working prototype | Brief, Research, People, private workbench, source/person sheets, phone navigation | Actual hosted URL on a second phone |
+| 15–20 holdings / 3–5 ad-hoc names | 16 mock holdings; LTTS, SRF, HAVELLS | Current official seed-symbol/source audit |
+| Working Push | IST windows, materiality/routine groups, filing/price/volume alerts, freshness | Reconcile a real full exchange window |
+| Working Pull / primary evidence | Generic original-PDF discovery/index/search/topic brief and reviewed comparisons | Independent real-ticker run and ten-claim original-page audit |
+| Beyond seed companies | Generic symbol-verified sources and reviewed fact workflow | Live cold-cache ticker chosen by a tester |
+| Network integrated and directly queryable | 12 fictional profiles; dated roles, explicit paths, relevant cards, identity checks and private reconnect notes | Second-person flow/usability check |
+| Four inputs | EOD bars, exchange filings, issuer originals and synthetic/attested local profiles | Actual upstream connectivity from deployment |
+| Design/privacy/models/cloud explanation | Architecture, plan audit, deployment and reviewer docs | Production limitations explicitly retained |
+| Phone-accessible delivery | Free interactive public Blueprint / temporary HTTPS instructions | Create and verify actual public link |
+| Public GitHub and build history | Reproducible source/CI plus user-maintained Git workflow | Commit/push, genuine session exports and external access |
+| Covering email | Short draft with required address/subject | Fill actual links/results and send |
 
-## Deliberate omissions
+See [PLAN_AUDIT.md](PLAN_AUDIT.md) for a page-by-page audit. Human-reviewed accounting facts are a deliberate design: exact source/value checks support a reviewer, not universal automatic financial interpretation. Optional dashboards, OCR, voice, native notifications, graph visualization and biographies are not required for the chosen workflow.
 
-The eight Pull views and example Push enrichments are a menu in the brief. Broad financial dashboards, automatic quarterly table extraction, OCR, voice, native push notifications, autonomous agents and executive biography/name resolution are not claimed. The deterministic financial comparison is the curated INFY case. Generic structured guidance extraction/comparison, authentication, private multi-user workspaces, consent/deletion automation and durable hosted live ingestion are future work.
+## Verified during the M6 build
 
-Public demo mode is read-only and uses historical sources; fresh document lookup, live refresh and alert editing are available in local mode. Do not present the hosted replay as a current live feed or production-private workspace.
+- **140 Python tests passed** under Python 3.12 with the pinned runtime dependencies. This includes actual loopback HTTP, controlled unseeded/cold-ticker indexing, exact source evidence, reviewed comparison and as-of behavior.
+- Two-cookie-jar tests verify private notes, holdings and facts do not cross workspaces. Tests cover signed-cookie tampering/expiry, CSRF/origin, secure-proxy cookies, consent expiry, profile withdrawal, erasure and disposable migration safety.
+- Pipeline tests cover parser-version reuse, old source revision retention, failed replacement, filing grouping/amendments, tracked refresh, stale-worker suppression and Decimal/quarterly arithmetic.
+- Existing source/threshold/provider-failure and optional Gemini/OpenAI response/citation/cache tests remain included. No real model call was made.
+- Browser interactions verified workspace creation, generic source discovery using explicitly controlled originals, candidate review/prefill/save, a guidance/actual comparison, source sheets, historical cutoff, identity match, private note save and account controls.
+- Phone widths 360, 390 and 430 px were checked without page-level horizontal overflow. Financial tables scroll within their container.
+- JavaScript/JSON/YAML syntax and local documentation links passed checks. Applying the ZIP over a copied M5 Git checkout preserved its `.env`, Git HEAD, source page index, market bars and public model cache. The first normal local workspace adopted its saved alert thresholds and read state; upgraded HTTP smoke and disposable-session acceptance both passed.
+- No QA database, generated fixture original, private session or export is included in the overlay.
 
-## Final operator acceptance
+Docker is not installed in the build environment. No authenticated GitHub/Render deployment target is connected. Tests use controlled source responses; they do not establish current upstream access, actual live inference, a real cloud deployment or an actual CI run.
 
-Record the commit SHA, date, observed result and a short issue note for each item. Do not tick a check because its instructions exist.
+## Operator acceptance — record commit, date and observed result
 
-- [ ] Apply the ZIP, set `FINN_PUBLIC_DEMO=0` / `FINN_ENABLE_LLM=0`, recreate Docker and confirm release `0.5.0`.
-- [ ] Run `python -m unittest discover -s tests -v` in the container. Save the actual output.
-- [ ] Run `python -m finn.smoke` against that running service. The command makes GET requests only.
-- [ ] On a clean checkout with a new named data volume, build using README instructions and inspect all three core workflows. Preserve the original checkout/data; do not use `down -v` there.
-- [ ] Refresh live sources locally. Review NSE coverage and completed-session dates. Compare one chosen filing window with the exchange website or an official CSV import; record denied/partial sources honestly.
-- [ ] Choose a document-rich NSE ticker outside the 19 demo names. Confirm it is not already indexed, then Find documents, inspect the original annual report/transcripts, and search an actual phrase from a PDF. Inspect its page link. This is an indexing/search acceptance, not proof of automatic financial interpretation.
-- [ ] Inspect ten material quote/page references in issuer originals, including all four INFY forecasts and its outcome. Check 4.2% versus original 1–3% (+1.2 pp over the upper bound) and final 4.5–5% (−0.3 pp below the lower bound).
-- [ ] Try a quiet window, a ticker without sources and a blocked upstream. Existing evidence must remain available and incomplete coverage must be explicit.
-- [ ] Deploy the Render Free configuration. Confirm health `public_demo:true`, `llm_enabled:false`; no paid resources or model keys. Run the hosted smoke check with `--expect-public-demo`.
-- [ ] On a phone using mobile data, open the hosted link from a fresh browser. Follow filing → evidence → relevant contact and ask another person to try it. Check a cold start as well as a warm visit.
-- [ ] Inspect the public GitHub Actions run. Its Docker build, suite, local smoke and public-mode smoke must actually pass.
-- [ ] Verify GitHub, demo and AI-session links from an external/private browser. Remove secrets and real contact data from repository/history/session exports.
-- [ ] Fill the covering note, recheck the exact submission address/subject against the assignment, and send before the deadline. No email is sent by this repository.
+- [ ] Apply the M5 overlay, preserve the named volume and existing `.env`, set local flags/AI off, recreate Docker and confirm `0.6.0`.
+- [ ] Run the actual container suite, `python -m finn.smoke` and `python -m finn.acceptance --sessions-only`; save actual output.
+- [ ] Open the first normal local workspace. Verify adopted M5 preferences/read alerts if present. Export useful work before its 24-hour expiry.
+- [ ] In a separate clean checkout/project/volume, build and inspect the same workflows. Preserve the working repo/data; do not reset its volume.
+- [ ] Verify the 16 seed NSE symbols and current issuer-document coverage against official sources.
+- [ ] Reconcile a complete chosen live filing window with NSE or its official CSV. Record RSS/denied/partial coverage honestly and inspect completed market-session dates.
+- [ ] Choose an unseeded, document-rich ticker not already indexed. Run `python -m finn.acceptance --ticker SYMBOL --query PHRASE` with a phrase from an actual original. Keep the cold-cache/index/source/page report. Partial results are not a full pass.
+- [ ] Review a real guidance/actual pair for that ticker. Inspect exact page, speaker, metric, period, scope, units, currency basis and publication dates; confirm any verdict against the original.
+- [ ] Inspect ten material original claim/page references, including all four INFY forecasts and outcome. Check original +1.2 pp and final −0.3 pp examples.
+- [ ] Test missing sources, quiet/partial windows, a failed replacement and earlier as-of date. No future outcome or unsupported figure should appear.
+- [ ] Open two separate browser contexts. Save a synthetic note/fact in A and verify B cannot see it. Test profile withdrawal/workspace erasure on disposable synthetic data; do not erase useful work.
+- [ ] Commit/push and inspect the actual GitHub Actions container build, tests, local smoke, public boundary and interactive session checks.
+- [ ] Create the Free public service. Verify HTTPS/session controls, `public_demo:true`, `llm_enabled:false`, public smoke and disposable session acceptance. Add no model keys/paid resources.
+- [ ] Open the public URL over mobile data in a fresh browser; test cold and warm visits. Watch a second person complete filing → source → relevant contact; aim for 90 seconds.
+- [ ] Verify the public repo/demo/AI-session links as an external viewer. Remove credentials and real private data from source/history/session exports.
+- [ ] Complete the covering email with actual links/results and send before the deadline.
 
-## Build verification evidence
+## Submission details
 
-The M5 source suite passes 101 Python tests in the build environment, including actual loopback HTTP entry points with controlled upstream/model responses. Browser module syntax was checked. No live model inference was run here. Docker and Render are not available as authenticated deployment targets in the build environment, so their actual run/deployment must not be marked complete until the operator or GitHub CI supplies that result.
+- **Deadline: 15 November 2026**. The brief gives no clock time; send early.
+- **To: assessment@enam.com**
+- **Subject: IIT Kanpur – Founding AI Engineer - 2027**
+- Include a phone-accessible prototype link, public GitHub repository, genuine AI build-session links/attachments and a short covering explanation of workflows, design, pipelines, privacy, models/agents, cloud, cost and limitations.
 
-## Submission from the brief
-
-- Deadline: **15 November 2026**; the brief specifies a date without a clock time. Aim to send early.
-- To: **assessment@enam.com**
-- Subject: **IIT Kanpur – Founding AI Engineer - 2027**
-- Include: phone-accessible prototype, public GitHub repository, genuine AI build-history links/attachments, short covering writeup.
+No email is sent by this repository.

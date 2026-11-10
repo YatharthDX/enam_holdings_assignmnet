@@ -43,9 +43,13 @@ def short_source(source):
 
 
 def all_companies():
-    return list(COMPANIES.values()) + [
+    from . import workspaces
+    held = set(workspaces.holdings()) if workspaces.current() is not None else {c["symbol"] for c in COMPANIES.values() if c["holding"]}
+    known = [{**c, "holding": c["symbol"] in held} for c in COMPANIES.values()]
+    extra = set(documents.symbols()) | held
+    return known + [
         {"symbol": s, "name": s, "sector": "Imported documents", "holding": False}
-        for s in documents.symbols() if s not in COMPANIES
+        | {"holding": s in held} for s in sorted(extra) if s not in COMPANIES
     ]
 
 
@@ -71,6 +75,9 @@ PATHS = connections()
 
 
 def people(query="", symbol=""):
+    from . import workspaces, network
+    if workspaces.current() is not None:
+        return network.people(query, symbol)
     tokens = words(query)
     company = COMPANIES.get(symbol.upper())
     matches = []
@@ -130,6 +137,8 @@ def comparison(symbol):
 
 
 def brief(window="24h", start=None, end=None):
+    from . import workspaces
+    held = set(workspaces.holdings()) if workspaces.current() is not None else {c["symbol"] for c in COMPANIES.values() if c["holding"]}
     if window == "custom":
         if not start or not end or start > end or end > REPLAY_END:
             raise ValueError("Choose a valid range ending on or before 17 April 2025.")
@@ -143,7 +152,7 @@ def brief(window="24h", start=None, end=None):
         source = SOURCES[filing["source"]]
         day = date.fromisoformat(source["date"])
         company = COMPANIES[source["symbol"]]
-        if not company["holding"] or not start <= day <= end:
+        if company["symbol"] not in held or not start <= day <= end:
             continue
         if filing.get("enrichment"):
             source = {**source, "related": SOURCES[filing["enrichment"]]}
@@ -156,7 +165,7 @@ def brief(window="24h", start=None, end=None):
     focus = feature["symbol"] if feature else None
     return {"as_of": REPLAY_END, "start": start, "end": end, "rows": rows, "focus": focus,
             "comparison": comparison(focus), "people": people(symbol=focus)[:2] if focus else [],
-            "holdings": sum(c["holding"] for c in COMPANIES.values())}
+            "holdings": len(held)}
 
 
 def snippet(body, tokens, limit=260):

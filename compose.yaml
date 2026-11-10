@@ -7,6 +7,9 @@ services:
       - finn_data:/data
     environment:
       FINN_PUBLIC_DEMO: "${FINN_PUBLIC_DEMO:-0}"
+      FINN_INTERACTIVE_DEMO: "${FINN_INTERACTIVE_DEMO:-0}"
+      FINN_TRUST_PROXY: "${FINN_TRUST_PROXY:-0}"
+      FINN_SESSION_SECRET: "${FINN_SESSION_SECRET:-}"
       FINN_ENABLE_LLM: "${FINN_ENABLE_LLM:-0}"
       FINN_LLM_PROVIDER: "${FINN_LLM_PROVIDER:-auto}"
       GEMINI_API_KEY: "${GEMINI_API_KEY:-}"

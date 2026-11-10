@@ -4,6 +4,8 @@ import ipaddress
 import json
 import socket
 import tempfile
+import threading
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
 from html.parser import HTMLParser
@@ -99,7 +101,7 @@ class PublicRedirect(HTTPRedirectHandler):
 
 def fetch_public(url):
     public_url(url, resolve=True)
-    return providers.request_bytes(url, build_opener(PublicRedirect()), limit=documents.MAX_BYTES)
+    return providers.request_bytes(url, build_opener(PublicRedirect()), limit=documents.limits()[0])
 
 
 def parse_links(body, symbol, page_url):
@@ -181,6 +183,7 @@ def status(symbol):
 
 
 def begin(symbol):
+    from . import runtime
     symbol = documents.ticker(symbol)
     now = live.clock()
     token = hashlib.sha256((symbol + providers.iso(now)).encode()).hexdigest()[:24]
@@ -191,8 +194,9 @@ def begin(symbol):
             return None
         busy = db.execute("SELECT COUNT(*) FROM document_jobs WHERE status='running' AND expires>?",
                           (providers.iso(now),)).fetchone()[0]
-        if busy >= 2:
-            raise ValueError("Two document lookups are already running. Try again when one finishes.")
+        limit = 1 if runtime.public_demo() else 2
+        if busy >= limit:
+            raise ValueError("Document lookups are busy. Try again when one finishes.")
         db.execute("""INSERT INTO document_jobs VALUES(?, ?, 'running', ?, NULL, ?, ?, '[]')
             ON CONFLICT(symbol) DO UPDATE SET token=excluded.token, status='running',
             started=excluded.started, finished=NULL, expires=excluded.expires, detail=excluded.detail""",
@@ -201,7 +205,39 @@ def begin(symbol):
     return token
 
 
+@contextmanager
+def keep_lease(symbol, token):
+    def renew():
+        with store.connection() as db:
+            return db.execute("UPDATE document_jobs SET expires=? WHERE symbol=? AND token=? AND status='running'",
+                              (providers.iso(live.clock() + timedelta(minutes=10)), symbol, token)).rowcount == 1
+    if not renew():
+        yield False
+        return
+    stopped = threading.Event()
+    def heartbeat():
+        while not stopped.wait(20):
+            try:
+                if not renew():
+                    return
+            except Exception:
+                pass
+    thread = threading.Thread(target=heartbeat, name="finn-document-lease", daemon=True)
+    thread.start()
+    try:
+        yield True
+    finally:
+        stopped.set()
+        thread.join(timeout=1)
+
+
 def run(symbol, token, fetch=fetch_public):
+    with keep_lease(symbol, token) as owned:
+        if owned:
+            _run(symbol, token, fetch)
+
+
+def _run(symbol, token, fetch=fetch_public):
     errors, indexed = [], 0
     candidates = []
     try:
@@ -212,20 +248,30 @@ def run(symbol, token, fetch=fetch_public):
                         symbol, token))
         for candidate in candidates:
             try:
+                with store.connection() as db:
+                    owned = db.execute("SELECT 1 FROM document_jobs WHERE symbol=? AND token=? AND status='running'", (symbol, token)).fetchone()
+                if not owned:
+                    return
                 body = fetch(candidate["url"])
+                with store.connection() as db:
+                    if not db.execute("SELECT 1 FROM document_jobs WHERE symbol=? AND token=? AND status='running'", (symbol,token)).fetchone():
+                        return
                 if not body.lstrip().startswith(b"%PDF-"):
                     raise providers.SourceError("The source did not return a PDF.")
                 with tempfile.TemporaryDirectory(prefix="finn-doc-") as folder:
                     path = Path(folder) / "primary.pdf"
                     path.write_bytes(body)
-                    documents.import_pdf(path, symbol, candidate["kind"], candidate["title"],
-                                         candidate["url"], published="")
+                    _, pages, _ = documents.import_pdf(path, symbol, candidate["kind"], candidate["title"],
+                                                      candidate["url"], published="")
+                    candidate.update(index_status="indexed", pages=pages, error=None)
                 indexed += 1
             except (providers.SourceError, PyPdfError, ValueError, OSError) as exc:
                 errors.append(candidate["title"] + ": " + str(exc))
+                candidate.update(index_status="error", error=str(exc)[:300])
             with store.connection() as db:
                 db.execute("UPDATE document_jobs SET expires=? WHERE symbol=? AND token=?",
                            (providers.iso(live.clock() + timedelta(minutes=10)), symbol, token))
+                db.execute("UPDATE document_jobs SET sources_json=? WHERE symbol=? AND token=?", (json.dumps(candidates), symbol, token))
     except providers.SourceError as exc:
         errors.append(str(exc))
     except Exception:

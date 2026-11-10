@@ -1,11 +1,15 @@
 """Public source cache and the single synthetic workspace's alert settings."""
 import json
 import sqlite3
+import os
 from contextlib import closing, contextmanager
 
 from .documents import database_path
 
 SCHEMA = [
+    "CREATE TABLE IF NOT EXISTS filing_versions (event TEXT NOT NULL,revision TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(event,revision))",
+    "CREATE TABLE IF NOT EXISTS document_refresh_queue (symbol TEXT PRIMARY KEY,event TEXT NOT NULL,requested TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS document_refresh_events (event TEXT PRIMARY KEY,symbol TEXT NOT NULL)",
     """CREATE TABLE IF NOT EXISTS live_filings (
         id TEXT PRIMARY KEY, symbol TEXT NOT NULL, published TEXT NOT NULL, body TEXT NOT NULL)""",
     "CREATE INDEX IF NOT EXISTS live_filings_date ON live_filings(published)",
@@ -37,10 +41,15 @@ def connection():
     path = database_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     with closing(sqlite3.connect(path, timeout=15)) as db:
+        os.chmod(path, 0o600)
         db.row_factory = sqlite3.Row
         db.execute("PRAGMA busy_timeout=15000")
+        db.execute("PRAGMA foreign_keys=ON")
+        db.execute("PRAGMA secure_delete=ON")
         for statement in SCHEMA:
             db.execute(statement)
+        from . import workspaces
+        workspaces.prepare(db)
         db.execute("INSERT OR IGNORE INTO alert_settings VALUES(1, ?)",
                    (json.dumps(DEFAULT_SETTINGS),))
         db.commit()
@@ -53,7 +62,14 @@ def settings(db):
 
 
 def put_filings(db, rows):
+    import hashlib
     for row in rows:
+        old = db.execute("SELECT body FROM live_filings WHERE id=?", (row["id"],)).fetchone()
+        bodies = ([json.loads(old[0])] if old else []) + [row]
+        for body in bodies:
+            encoded = json.dumps(body, sort_keys=True)
+            revision = hashlib.sha256(encoded.encode()).hexdigest()
+            db.execute("INSERT OR IGNORE INTO filing_versions VALUES(?,?,?)", (row["id"], revision, encoded))
         db.execute("""INSERT INTO live_filings VALUES(?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET published=excluded.published, body=excluded.body""",
                    (row["id"], row["symbol"], row["published"], json.dumps(row)))
