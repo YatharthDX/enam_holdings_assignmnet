@@ -6,6 +6,14 @@ services:
     volumes:
       - finn_data:/data
     environment:
+      FINN_ENABLE_LLM: "${FINN_ENABLE_LLM:-0}"
+      FINN_LLM_PROVIDER: "${FINN_LLM_PROVIDER:-auto}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      FINN_GEMINI_MODEL: "${FINN_GEMINI_MODEL:-gemini-3.8-flash}"
+      FINN_OPENAI_MODEL: "${FINN_OPENAI_MODEL:-}"
+      FINN_RESEARCH_MODEL: "${FINN_RESEARCH_MODEL:-}"
+      FINN_LLM_TIMEOUT_SECONDS: "${FINN_LLM_TIMEOUT_SECONDS:-240}"
       FINN_AUTO_REFRESH: "${FINN_AUTO_REFRESH:-1}"
       FINN_REFRESH_SECONDS: "${FINN_REFRESH_SECONDS:-900}"
     healthcheck:

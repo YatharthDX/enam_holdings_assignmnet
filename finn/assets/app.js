@@ -23,15 +23,22 @@ function userIsReading() {
 
 function scheduleResearchPoll() {
   clearTimeout(pollTimer);
-  if (activeResearch?.discovery?.status !== 'running') return;
+  if (activeResearch?.discovery?.status !== 'running' && activeResearch?.analysis?.job?.status !== 'running') return;
   const symbol = activeResearch.company.symbol;
-  const previous = JSON.stringify(activeResearch.discovery);
+  const previous = JSON.stringify([activeResearch.discovery, activeResearch.analysis?.job]);
+  const lens = activeResearch.analysis?.lens || 'business';
   pollTimer = setTimeout(async () => {
     const {view, params} = locationState();
-    if (view !== 'research' || (params.get('ticker') || 'INFY') !== symbol) return;
+    if (view !== 'research' || (params.get('ticker') || 'INFY') !== symbol || (params.get('lens') || 'business') !== lens) return;
     try {
-      const data = await api('research/' + encodeURIComponent(symbol) + '/discovery');
-      if (JSON.stringify(data.job) !== previous && !userIsReading()) {
+      const [docs, analysis] = await Promise.all([
+        api('research/' + encodeURIComponent(symbol) + '/discovery'),
+        activeResearch.analysis?.enabled && activeResearch.analysis?.job?.status === 'running' ?
+          api('research/' + encodeURIComponent(symbol) + '/analysis',{lens}).catch(() => ({job:activeResearch.analysis?.job || null})) :
+          Promise.resolve({job:activeResearch.analysis?.job || null})
+      ]);
+      if (JSON.stringify([docs.job, analysis.job]) !== previous && !userIsReading() &&
+          !document.querySelector('.analysis-method[open]')) {
         catalog = null;
         await render();
         return;
@@ -85,6 +92,7 @@ async function render() {
   const version=++revision;
   if (activeHash) scrollPositions.set(activeHash, window.scrollY);
   const destination=location.hash || '#brief';
+  const aiWasOpen=activeHash===destination && Boolean(document.querySelector('#optional-ai')?.open);
   const {view,params}=locationState();
   sheet.close();
   nav(view);
@@ -104,8 +112,8 @@ async function render() {
       }
     } else if (view==='research') {
       const symbol=params.get('ticker') || 'INFY';
-      const data=await api('research/'+encodeURIComponent(symbol),{q:params.get('q')});
-      draw=()=>{activeResearch=data;return researchView(data,catalog);};
+      const data=await api('research/'+encodeURIComponent(symbol),{q:params.get('q'),lens:params.get('lens')});
+      draw=()=>{activeResearch=data;return researchView(data,catalog,{aiOpen:aiWasOpen || params.get('ai')==='1'});};
     } else if (view==='people') {
       const q=params.get('q')||'',symbol=params.get('symbol')||'';
       const data=await api('people',{q,symbol});
@@ -165,6 +173,17 @@ document.addEventListener('click',event=>{
       });
     return;
   }
+  if (target.id === 'analyze-documents') {
+    target.disabled = true;
+    api('research/' + encodeURIComponent(activeResearch.company.symbol) + '/analyze', {}, {
+      method:'POST',body:JSON.stringify({lens:activeResearch.analysis.lens})
+    }).then(() => render()).catch(error => {
+      target.disabled = false;
+      const status = document.querySelector('#analysis-status');
+      if (status) status.textContent = error.message;
+    });
+    return;
+  }
   if (target.id==='live-refresh' || target.id==='alerts-read') {
     target.disabled=true;
     const path=target.id==='live-refresh'?'live/refresh':'alerts/read';
@@ -210,7 +229,7 @@ document.addEventListener('submit',async event=>{
     form.elements.ticker.setCustomValidity(/^[A-Z0-9][A-Z0-9&.-]{0,24}$/.test(symbol)?'':'Choose a listed suggestion or enter an NSE ticker.');
     if (form.reportValidity()) location.hash=route('research',{ticker:symbol});
   } else if (form.id==='evidence-form') {
-    location.hash=route('research',{ticker:activeResearch.company.symbol,q:field('term')});
+    location.hash=route('research',{ticker:activeResearch.company.symbol,lens:params.get('lens'),q:field('term')});
   } else if (form.id==='people-form') {
     location.hash=route('people',{q:field('q'),symbol:params.get('symbol')});
   } else if (form.id==='alert-rule-form') {

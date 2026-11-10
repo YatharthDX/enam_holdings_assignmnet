@@ -1,5 +1,6 @@
 import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js';
 import {modeSwitch, windowControls} from './live-view.js';
+import {analysisView} from './analysis-view.js';
 
 function rangeChart(series) {
   const forecasts = series.forecasts;
@@ -66,7 +67,7 @@ function tickerForm(symbol, catalog) {
     <button class="button primary" type="submit">Research</button></div>
     <datalist id="tickers">${catalog.companies.map(c=>`<option value="${esc(c.symbol)}">${esc(c.name)}</option>`).join('')}</datalist></form>`;
 }
-export function researchView(data,catalog) {
+export function researchView(data,catalog,options = {}) {
   const c=data.company;
   const title=c.name + (c.name !== c.symbol ? ' · '+c.symbol : '');
   const samples=catalog.sample_symbols.map(s=>`<a class="chip" href="${route('research',{ticker:s})}" ${c.symbol===s?'aria-current="true"':''}>${esc(s)}</a>`).join('');
@@ -77,6 +78,8 @@ export function researchView(data,catalog) {
     ${data.imported ? `<p class="panel-intro">Includes ${data.imported} locally indexed ${data.imported === 1 ? 'document' : 'documents'}. Publication dates appear with each source.</p>` : ''}
     <form id="evidence-form" class="search-form"><label for="term">Word or phrase</label><div class="input-line">
     <input name="term" id="term" maxlength="160" value="${esc(data.query)}" placeholder="e.g. revenue guidance"><button class="button secondary" type="submit">Search</button></div></form>
+    <div class="evidence-topics" aria-label="Evidence topics">${['revenue','guidance','cash flow'].map(q=>
+      `<a class="chip" href="${route('research',{ticker:c.symbol,q})}" ${data.query===q?'aria-current="true"':''}>${esc(q)}</a>`).join('')}</div>
     ${matches}<details class="routine"><summary>Source documents <b>${data.sources.length}</b> ${icon('down',15)}</summary>${citations}</details></section>`;
   const noDocs = empty('No indexed sources for '+c.symbol,'Find primary documents for this ticker to build its evidence index.');
   const job = data.discovery;
@@ -88,12 +91,12 @@ export function researchView(data,catalog) {
       ${job.sources.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)} ${icon('external',14)}</a>`).join('')}</details>` : ''}
     </section>`;
   const network = `<section class="panel"><div class="section-meta">Fictional network · ${esc(c.symbol)}</div><h2>Who can help?</h2>${data.people.length?data.people.map(personCard).join(''):empty('No recorded connection','Try searching People by industry or area of experience.')}</section>`;
-  return heading('Primary-source research','Company research','Check management’s statements against the reported outcome.')+
+  return heading('Primary-source research','Company research','Inspect company evidence, compare guidance and find relevant contacts.')+
     tickerForm(c.symbol,catalog)+`<div class="chips">${samples}</div>${discovery}
     <div class="company-heading"><div class="kicker">${esc(c.sector || 'Research index')}</div><h2>${esc(title)}</h2>
     ${data.snapshot?`<div class="section-meta">Historical business snapshot · FY24</div><p>${esc(data.snapshot.text)} ${sourceButton(data.snapshot.source,'Source')}</p>`:''}
     </div><div class="research-grid"><div class="stack">
-    ${data.comparison ? guidanceCard(data.comparison) : ''}${data.sources.length?search:noDocs}</div><aside class="stack">${network}
+    ${data.comparison ? guidanceCard(data.comparison) : ''}${data.sources.length?search:noDocs}${analysisView(data,options.aiOpen)}</div><aside class="stack">${network}
     ${data.sources.length && !data.comparison ? `<div class="note"><strong>Guidance coverage</strong><p>No comparable forecast and outcome have been indexed for this ticker.</p></div>` : ''}</aside></div>`;
 }
 export function peopleView(data,query,symbol,catalog) {

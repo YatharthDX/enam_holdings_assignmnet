@@ -1,10 +1,85 @@
 # FINN
 
-A phone interface for an Indian-equity portfolio. Read a filing, inspect company evidence and see who in a fictional investor network has relevant experience.
+A mobile-first Indian-equity investor desk. The primary experience uses sourced documents, deterministic calculations and a fictional professional network. **No LLM or model API key is required for the core workflows.**
 
-## Apply Milestone 2
+**Reviewers:** start with [REVIEWER_GUIDE.md](REVIEWER_GUIDE.md). Optional AI synthesis is disabled by default and appears in a collapsed section after the main research tools.
 
-This update adds live acquisition and monitoring to Milestone 1. Extract the update ZIP into the same repository, replacing its included files. The existing SQLite volume holds its documents. New tables are created automatically.
+## Core workflows
+
+| Layer | Working workflow | Method |
+| --- | --- | --- |
+| Push | Portfolio filing brief, source coverage, daily price/volume signals and saved alert rules | Public-source acquisition, metadata rules and deterministic thresholds |
+| Pull | Search primary documents with PDF-page evidence; compare original/revised guidance with an outcome in the historical INFY example | PDF text indexing, keyword retrieval and Decimal arithmetic |
+| Network | Relevant contacts alongside filings/research and direct People queries | Explicit synthetic profiles, employer/topic matching and recorded paths up to two hops |
+
+Source search works for any valid NSE ticker whose original documents have been indexed. Deterministic financial/guidance comparisons currently have a curated historical Infosys example; the app does not claim automated financial interpretation for every ticker. Other seeded company snapshots are explicitly historical. Data availability, period and source coverage stay visible.
+
+## Apply the core-first update
+
+`FINN_M4_Core_First_Optional_AI.zip` applies directly over the dual-provider M3 build, including when the intervening diagnostic/timeout ZIPs were skipped. It includes those transport improvements for the optional feature but requires no model setup. Existing `.env`, source data, saved settings, caches and Git history are retained. No dependency or Dockerfile changed.
+
+Unzip in the repository root. Set or update this entry in your existing `.env`:
+
+```dotenv
+FINN_ENABLE_LLM=0
+```
+
+This is also the default if the setting is absent. Existing Gemini/OpenAI keys may remain in `.env`; their presence does not enable generation. Only explicit true values (`1`, `true`, `yes`, `on`) enable the feature. The server blocks generation endpoints and queued requests when disabled, not just their buttons.
+
+For your existing cached Docker image:
+
+```bash
+export FINN_PORT=8090
+docker compose -f compose.yaml -f compose.local.yaml up --no-build --pull never --force-recreate --wait
+curl -fsS http://localhost:8090/health
+curl -fsS http://localhost:8090/api/llm/status
+docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m unittest discover -s tests -v
+```
+
+Health should show `version: 0.4.0` and `llm_enabled: false`. Model status should show `enabled: false`. A fresh clone uses `cp .env.example .env` followed by `docker compose up --build --wait`; the cached-image override is for an image that already exists. Its default tag is `enamholdings-app:latest`, configurable through `FINN_RUNTIME_IMAGE`. Named data volumes persist across restarts; do not use `down -v` to apply updates.
+
+## Review the main experience
+
+1. Open [the historical portfolio brief](http://localhost:8090/#brief?mode=replay&window=7d). Inspect a material filing, routine disclosures and relevant fictional contacts.
+2. Open [INFY research](http://localhost:8090/#research?ticker=INFY). The primary view shows the historical guidance comparison, then evidence search. Choose a forecast and inspect both its quote and the outcome source.
+3. Search `currency`, or choose the `guidance` topic. Inspect a matching passage and its original PDF page.
+4. Enter an off-portfolio ticker. Choose **Find documents**, wait for indexing, then search words used in the issuer's original PDF. This requires public source connectivity, not an LLM.
+5. Inspect **Who can help?**, then search People by company or expertise. Every profile and introduction path is explicitly synthetic.
+6. Choose **Live sources** for current acquisition, market signals, coverage and alert settings. Provider failures are surfaced with the last usable records; historical samples are never substituted as live events.
+
+The primary research page is served even when optional AI settings are invalid or its status is unavailable. With AI disabled, it does not retrieve AI context, poll model jobs or make model requests. The collapsed **Optional AI synthesis** section explains the extra feature without obstructing evidence research.
+
+## Optional secondary AI synthesis
+
+AI synthesis is an enhancement for reading selected public passages. It is not needed to demonstrate Push, Pull or Network. Both Gemini and OpenAI remain supported. Enable it only if desired:
+
+```dotenv
+FINN_ENABLE_LLM=1
+FINN_LLM_PROVIDER=gemini
+GEMINI_API_KEY=your_actual_gemini_key
+```
+
+Alternatively use `FINN_LLM_PROVIDER=openai` and `OPENAI_API_KEY`. `auto` selects whichever key is present, preferring Gemini if both exist. Recreate the container after editing `.env`, expand **Optional AI synthesis**, choose a lens and explicitly press **Analyze documents**. Opening the section never makes a generation request. A failed provider call remains confined to this secondary section.
+
+Gemini uses `FINN_GEMINI_MODEL` (default `gemini-3.8-flash`); OpenAI uses `FINN_OPENAI_MODEL` (default `gpt-5.4-mini-2026-03-17`). The old `FINN_RESEARCH_MODEL` variable remains an OpenAI-only override when its newer setting is absent. Model keys stay server-side and are not returned through the UI or API. Keep `.env` out of the public repository and build-session exports.
+
+Public passages are selected deterministically, capped at 18 passages and 36,000 characters across at most five originals. Where no originals are indexed, explicitly labelled historical excerpts can be used. Both providers feed the same structured-output and quotation/page/numerical-literal checks. These establish provenance, not semantic entailment or investment accuracy. Interpretations and evidence gaps are labelled; inspect the source. The core Infosys comparison still uses deterministic arithmetic.
+
+Generation is capped at 3,500 output tokens for OpenAI and 8,192 including thinking for Gemini. The default generation socket timeout is 240 seconds (`FINN_LLM_TIMEOUT_SECONDS`, range 30–600), with job-ownership renewal while a worker waits. It is not an end-to-end completion guarantee. Provider/model/lens/document/prompt identities separate saved results; changing only timeout settings reuses the same answer cache. At most two jobs run concurrently, with no automatic retries or provider fallback.
+
+Optional Gemini free-tier eligibility and quotas depend on the project/model; FINN cannot inspect the Google billing plan. Keep billing disabled if zero spend is required. No Gemini dollar estimate is invented. Provider-reported tokens are recorded; default OpenAI mini estimates use the listed 10 November 2026 rates and exclude project-specific pricing/taxes. Provider billing is authoritative. Google HTTP 503 indicates temporary unavailability; increasing the client timeout cannot resolve a returned 503. Core workflows remain available during provider failures.
+
+For an optional read-only metadata diagnostic after enabling AI:
+
+```bash
+docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.diagnose
+```
+
+This performs a model-metadata GET with a separate 15-second socket timeout, never a generation request. Its safe output distinguishes DNS, TLS, timeouts, authentication, quota and known request parameters. Metadata success does not prove inference capacity, free-tier eligibility or schema acceptance. `--models` lists one bounded page of model IDs. With AI disabled, the diagnostic performs no provider request.
+
+## Milestone 2 operations
+
+Milestone 2 introduced live acquisition and monitoring. Those workflows remain available alongside the new document analysis. New SQLite tables are created automatically when needed.
 
 Start Docker Desktop, then run from the repository root.
 
@@ -17,9 +92,9 @@ docker compose exec -T app python -m unittest discover -s tests -v
 
 The health response includes `"mode":"live_and_replay"`. Open **http://localhost:8090** and select **Live sources**. Initial acquisition runs in the background, then every 15 minutes while the container runs. The interface polls for completed refreshes and new alerts. **Refresh sources** requests an immediate update.
 
-The settings in `.env.example` can be merged into your existing `.env`. `FINN_PORT` selects the Mac's port. `FINN_AUTO_REFRESH=0` disables scheduled acquisition. `FINN_REFRESH_SECONDS` sets its interval, with a minimum of 60 seconds. API keys and a frontend build are unnecessary for this milestone.
+The settings in `.env.example` can be merged into your existing `.env`. `FINN_PORT` selects the Mac's port. `FINN_AUTO_REFRESH=0` disables scheduled acquisition. `FINN_REFRESH_SECONDS` sets its interval, with a minimum of 60 seconds. Live acquisition and the existing replay do not require API keys. Document analysis uses the optional server-side key configured above. There is no frontend build step.
 
-For a phone on the same Wi-Fi, run `ipconfig getifaddr en0` on your Mac and open `http://<the-printed-IP>:8090` on the phone. Stop the service with `docker compose down`. Its named volume persists across restarts.
+For a phone on the same Wi-Fi, run `ipconfig getifaddr en0` on your Mac and open `http://<the-printed-IP>:8090` on the phone. Stop the service with `docker compose down`. Its named volume persists across restarts. When using the cached-image override, include both `-f` arguments for subsequent Compose commands as in the existing-repository start instructions above.
 
 ### Python option
 
@@ -29,6 +104,10 @@ Use Python 3.11 or newer. Python 3.12 is the verified runtime.
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
+# For this Bash option, load your own local .env if you configured a key there.
+set -a
+source .env
+set +a
 python -m uvicorn finn.app:app --host 0.0.0.0 --port 8090
 ```
 
@@ -74,7 +153,7 @@ Screener supplies document links only. Financial tables, generated summaries, br
 
 Discovery and acquisition can fail independently. An unreadable or denied replacement leaves the last indexed revision available. PDFs over 50 MiB, encrypted PDFs, files over 800 pages and scans without selectable text produce an explicit error. Public HTTPS addresses and redirect targets are checked before downloading.
 
-After indexing, search a distinctive phrase from the company PDF. Each hit includes its original URL and PDF page. This milestone retrieves evidence and computes existing comparisons. LLM extraction and synthesis are subsequent work.
+After indexing, search a distinctive phrase from the company PDF. Each hit includes its original URL and PDF page. After discovery, the Milestone 3 research lenses can synthesize selected passages with checked citations. Existing deterministic historical comparisons remain available.
 
 ### Manual PDF import
 
@@ -104,7 +183,10 @@ People includes 12 fictional profiles with explicit direct and second-degree rel
 
 | Module | Responsibility |
 | --- | --- |
-| `finn/app.py` | HTTP routes, validation, background refresh startup and document-job initiation. |
+| `finn/app.py` | HTTP routes, validation, refresh startup and background document/research jobs. |
+| `finn/analysis.py` | Optional synthesis context, shared citation checks, usage, ownership and result cache. |
+| `finn/llm.py` | Provider selection, HTTPS transports, safe error classification and response normalization. |
+| `finn/diagnose.py` | Read-only model-metadata diagnostics with redacted output. |
 | `finn/desk.py` | Historical brief, forecast comparisons, source search and network matching. |
 | `finn/providers.py` | Public source requests, NSE JSON/RSS/CSV normalization and completed Yahoo daily bars. |
 | `finn/live_store.py` | SQLite records, source coverage, refresh ownership and persistent alert history. |
@@ -115,7 +197,11 @@ People includes 12 fictional profiles with explicit direct and second-degree rel
 
 Run `python -m unittest discover -s tests -v` in the Python environment, or use the Docker command above. The suite includes actual HTTP entry points and controlled upstream responses for exact threshold boundaries, IST windows, duplicate refreshes, source failure recovery, corporate actions, unknown tickers, document discovery, replacement safety and origin checks. It does not require external provider access.
 
-This milestone makes zero model calls. Subsequent work includes LLM-assisted extraction and analysis, hosted deployment, authenticated investor workspaces and production retention controls.
+The default tests make zero external model calls. They exercise controlled model responses over the real HTTP routes, including citations, number rejection, cache invalidation, concurrency, refusal/truncation, redacted provider errors and no-key behavior. JavaScript syntax and the mobile UI were also checked. Live Gemini/OpenAI inference requires the operator’s own key and project access and was not run in the build environment. Docker itself must be verified on the operator’s machine.
+
+This is a single synthetic workspace on a local server. It has same-origin mutation checks, not investor authentication or tenant isolation. Public document text goes only to the selected provider on an explicit analysis request. OpenAI requests set `store: false`, which does not promise zero provider retention; see [OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data). Gemini Free-tier content may be used to improve Google products; see [Gemini terms](https://ai.google.dev/gemini-api/terms). Only public issuer evidence is sent; real personal-network data are not part of this prototype. SQLite data/results persist until the operator removes or replaces them; automated retention/deletion and access controls are future deployment work. Do not expose this prototype publicly with a funded key. Production design needs authentication, per-investor authorization, spend limits, encrypted secret storage, consent and deletion controls before real network/contact data are introduced.
+
+Subsequent work includes a hosted authenticated demo, a final architecture/tradeoff writeup and the submission package. Preserve genuine build sessions throughout.
 
 Preserve the actual coding-agent and ChatGPT session exports/share links for ENAM's AI build-history requirement. Keep credentials and real contact data out of the public repository and those exports.
 
@@ -125,3 +211,10 @@ Preserve the actual coding-agent and ChatGPT session exports/share links for ENA
 - [Yahoo Finance price history](https://finance.yahoo.com/quote/INFY.NS/history/).
 - [Screener document links](https://www.screener.in/company/INFY/consolidated/).
 - Curated historical source URLs and locators are stored in `finn/data/sources.json`.
+
+- [OpenAI GPT-5.4 mini model and pricing](https://developers.openai.com/api/docs/models/gpt-5.4-mini).
+- [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs) and [Responses API migration/configuration](https://developers.openai.com/api/docs/guides/migrate-to-responses).
+
+- [Gemini generateContent structured outputs](https://ai.google.dev/gemini-api/docs/generate-content/structured-output), [thinking settings](https://ai.google.dev/gemini-api/docs/generate-content/thinking) and [API reference](https://ai.google.dev/api/generate-content).
+
+- [Google API error codes](https://ai.google.dev/gemini-api/docs/generate-content/api-errors) and [model pricing/tier availability](https://ai.google.dev/gemini-api/docs/pricing).

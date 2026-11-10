@@ -1,4 +1,5 @@
 from datetime import date
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from . import desk, discovery, documents, live, live_store
+from . import analysis, desk, discovery, documents, live, live_store, llm
 
 WEB = Path(__file__).parent / "assets"
 
@@ -24,7 +25,7 @@ async def lifespan(application):
         refresher.stop()
 
 
-app = FastAPI(title="FINN investor desk", version="0.2.0", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(title="FINN investor desk", version="0.4.0", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/assets", StaticFiles(directory=WEB), name="assets")
 
 
@@ -35,7 +36,15 @@ def index():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "mode": "live_and_replay"}
+    return {"status": "ok", "mode": "live_and_replay", "version": "0.4.0", "llm_enabled": llm.enabled()}
+
+
+@app.get("/api/llm/status")
+def model_configuration():
+    try:
+        return llm.public_config()
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @app.get("/api/catalog")
@@ -58,10 +67,20 @@ def get_brief(window: str = "24h", start: date | None = None, end: date | None =
 
 
 @app.get("/api/research/{symbol}")
-def get_research(symbol: str, q: str = Query("", max_length=160)):
+def get_research(symbol: str, q: str = Query("", max_length=160), lens: str = "business"):
     try:
         result = desk.research(symbol, q)
         result["discovery"] = discovery.status(result["company"]["symbol"])
+        try:
+            result["analysis"] = analysis.status(result["company"]["symbol"], lens)
+        except ValueError as exc:
+            # Optional model settings must never take down source research.
+            result["analysis"] = {"enabled": llm.enabled(), "job": None, "lens": lens,
+                                  "configuration_error": str(exc)}
+        except Exception:
+            logging.getLogger(__name__).warning("Optional AI status unavailable; primary research is still served")
+            result["analysis"] = {"enabled": llm.enabled(), "job": None, "lens": lens,
+                                  "configuration_error": "Optional AI status is unavailable. Primary research remains accessible."}
         return result
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
@@ -76,6 +95,31 @@ def same_origin(request):
     origin = request.headers.get("origin")
     if origin and origin.rstrip("/") != str(request.base_url).rstrip("/"):
         raise HTTPException(403, "Open FINN on the same origin to change its demo settings.")
+
+
+@app.get("/api/research/{symbol}/analysis")
+def analysis_status(symbol: str, lens: str = "business"):
+    try:
+        return analysis.status(symbol, lens)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+class AnalysisRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    lens: str = Field(default="business", max_length=30)
+
+
+@app.post("/api/research/{symbol}/analyze", status_code=202)
+def analyze_documents(symbol: str, value: AnalysisRequest, request: Request, tasks: BackgroundTasks):
+    same_origin(request)
+    try:
+        result, work = analysis.begin(symbol, value.lens)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if work:
+        tasks.add_task(analysis.run, *work)
+    return result
 
 
 @app.get("/api/research/{symbol}/discovery")
