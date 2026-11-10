@@ -1,4 +1,6 @@
-# Apply M6 over integrated M5
+# Apply the cumulative M6.1 update over integrated M5
+
+For OpenRouter setup, follow [UPGRADE_OPENROUTER.md](UPGRADE_OPENROUTER.md) after these core migration steps.
 
 Run from the existing EnamHoldings repository root. Keep your current data volume and `.env`.
 
@@ -6,7 +8,7 @@ Run from the existing EnamHoldings repository root. Keep your current data volum
 
 ```bash
 git status --short
-unzip -o "$HOME/Downloads/FINN_M6_Complete_Workflows_Update.zip"
+unzip -o "$HOME/Downloads/FINN_M6_1_OpenRouter_Default_Update.zip"
 ```
 
 In the existing `.env`, set:

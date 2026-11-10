@@ -1,4 +1,4 @@
-import {esc, heading, icon, route} from './ui.js?v=0.6.0.2';
+import {esc, heading, icon, route} from './ui.js?v=0.6.1';
 
 export function workspaceNotice(session) {
   if (session?.authenticated) return `<aside class="workspace-notice"><span><strong>Your private demo workspace</strong> · expires within 24 hours</span><a href="#account" class="text-button">Workspace ${icon('chevron',14)}</a></aside>`;

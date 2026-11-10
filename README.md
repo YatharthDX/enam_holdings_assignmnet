@@ -1,6 +1,8 @@
 # FINN
 
-A mobile-first Indian-equity research desk for the ENAM Founding AI Engineer Build Challenge. **Push, Pull and Network work without an LLM key.** Optional Gemini/OpenAI synthesis is secondary and off by default.
+A mobile-first Indian-equity research desk for the ENAM Founding AI Engineer Build Challenge. **Push, Pull and Network work without an LLM key.** Optional OpenRouter/Gemini/OpenAI synthesis is secondary and off by default.
+
+**M6.1 adds default, free-only OpenRouter support.** Existing users: follow [UPGRADE_OPENROUTER.md](docs/UPGRADE_OPENROUTER.md); update the provider line in your existing `.env`. The AI feature remains optional and off in a fresh setup.
 
 Start with [REVIEWER_GUIDE.md](REVIEWER_GUIDE.md). See [the plan audit](docs/PLAN_AUDIT.md) for what M6 implements, deliberate design changes and external acceptance checks.
 
@@ -16,9 +18,9 @@ Start with [REVIEWER_GUIDE.md](REVIEWER_GUIDE.md). See [the plan audit](docs/PLA
 
 There are 16 mock holdings, three off-portfolio examples and 12 fictional contacts. Generic discovery and reviewed comparisons do not depend on that seed universe. Quantitative facts require a person to inspect the original and confirm the fields; this is not a universal automatic financial extractor.
 
-## Upgrade an integrated M5 repository
+## Upgrade an integrated M5 or M6 repository
 
-Apply `FINN_M6_Complete_Workflows_Update.zip` in the repository root. It contains changed/new files relative to M5. It does not contain your `.env`, database, credentials or Git history. No Python dependency or Dockerfile changed.
+Apply `FINN_M6_1_OpenRouter_Default_Update.zip` in the repository root. It contains changed/new files relative to M5, including the M6 workflows and OpenRouter update. It does not contain your `.env`, database, credentials or Git history. No Python dependency or Dockerfile changed.
 
 Keep or update these entries in your existing `.env`:
 
@@ -42,7 +44,7 @@ docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.
 docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.acceptance --sessions-only
 ```
 
-Health should show `version: 0.6.0`, `public_demo: false` and `llm_enabled: false`. Open http://localhost:8090 and select **Open my workspace**. Until then the browser sees public evidence and fictional seeds.
+Health should show `version: 0.6.1`, `public_demo: false` and `llm_enabled: false`. Open http://localhost:8090 and select **Open my workspace**. Until then the browser sees public evidence and fictional seeds.
 
 The **first normal local workspace** adopts M5 alert preferences and alert read/history state once. Disposable acceptance sessions skip that adoption. Source indexes, public model-result caches and market/filing records remain shared and are not removed by the upgrade. Private workspace data now expire after 24 hours as specified in the design plan. Export before expiry using **Workspace → Export workspace**. The export is a readable snapshot; network profiles/edges can be re-imported, but there is no one-click restore of notes, facts or alerts.
 
@@ -147,21 +149,38 @@ Accepted kinds: `annual_report`, `transcript`. For Docker copy the file into the
 
 ## Optional secondary AI
 
-Enable only in local mode, recreate the container, open a workspace and explicitly select **Analyze documents**:
+OpenRouter is the default provider when optional AI is explicitly enabled. To use it locally, update your existing `.env`, recreate the container, open a workspace and select **Optional AI synthesis → Analyze documents**:
 
 ```dotenv
+FINN_PUBLIC_DEMO=0
 FINN_ENABLE_LLM=1
-FINN_LLM_PROVIDER=gemini
-GEMINI_API_KEY=your_actual_key
+FINN_LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=your_actual_key
+FINN_OPENROUTER_MODEL=openrouter/free
 ```
 
-OpenAI also works through `FINN_LLM_PROVIDER=openai` and `OPENAI_API_KEY`. `auto` prefers Gemini when both keys exist. Key presence alone never enables generation. Opening the collapsed section does not generate; there is no automatic provider fallback or retry. Model IDs are configurable through `FINN_GEMINI_MODEL` / `FINN_OPENAI_MODEL`; use an ID available to your project.
+An existing explicit `FINN_LLM_PROVIDER=gemini` or `openai` remains effective until you change that line. The update does not overwrite `.env`. OpenRouter keys are separate from Google/OpenAI keys and stay server-side.
 
-Only up to 18 public source passages/36,000 characters enter a request, across at most five originals. Private contact names, notes, holdings and private reviewed facts are not sent. Source-span/page/number checks establish traceability, not semantic entailment. Interpretations remain labelled. As-of research disables synthesis rather than accidentally using future context.
+`openrouter/free` chooses an available compatible free model dynamically. FINN records the returned actual model with the saved result. For repeatable evaluation, you can explicitly pin a currently available `author/model:free` ID through `FINN_OPENROUTER_MODEL`. Paid OpenRouter model IDs are rejected before network access; the request also requires schema-capable endpoints, disables provider fallback and caps prompt/completion/request pricing at zero. A missing compatible endpoint is an explicit error, not a reason to drop validation or switch to a paid model. OpenRouter/provider capacity and quota remain external.
 
-Jobs renew ownership while waiting, with at most two concurrent generations. Default socket timeout is 240 seconds, configurable from 30–600; it is not an end-to-end guarantee. Provider/model/lens/document/prompt identities separate caches. Tokens/latency and available estimates are recorded. No real inference was run in build verification. Provider quotas, billing and availability remain external; a returned 503 is not fixed by a longer client timeout.
+Gemini and OpenAI remain available by setting `FINN_LLM_PROVIDER=gemini` / `openai`, their corresponding API key and optional model override. `auto` selects the first configured key in this order: OpenRouter, Gemini, OpenAI. With no keys, it shows the unconfigured OpenRouter option. Selection is frozen when a job starts; no runtime provider fallback or automatic retry occurs. Key presence alone never enables generation, and expanding the section does not generate.
 
-`python -m finn.diagnose` performs only bounded model-metadata GETs when AI is enabled, and none when disabled. It never generates. Keep keys out of the repository and shared AI-session exports.
+Only up to 18 public source passages/36,000 characters enter a request, across at most five originals. Private contact names, notes, holdings and reviewed facts are excluded. Source-span/page/number checks establish traceability, not semantic entailment. OpenRouter and its selected downstream provider process those public passages under their respective policies. As-of research disables synthesis. Public demo mode always forces all model transports off.
+
+OpenRouter uses non-streaming Chat Completions with a strict JSON schema and an 8,192-token output cap. Reasoning text is discarded; visible content is normalized into the shared verifier. Refusals, truncation, tool calls, malformed output and error envelopes are not published. Provider/model/lens/document/prompt identities separate result caches; a changed provider does not erase old results. The free router's cache uses its requested route identity while the served model is recorded in usage.
+
+Jobs renew ownership while waiting, with at most two concurrent generations. Default socket timeout is 240 seconds, configurable from 30–600; it is not an end-to-end guarantee. Provider-reported cost (including a reported zero), token counts, actual model and latency are recorded when supplied. Missing cost remains unknown; FINN does not infer a bill of zero from the model name. Existing OpenAI estimates remain separate. No real inference or user-key request was run in build verification.
+
+For a read-only check after restart:
+
+```bash
+docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.diagnose
+docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.diagnose --models
+```
+
+For OpenRouter, the first checks key metadata and the second lists bounded free schema-capable catalog IDs. These GETs do not generate or prove inference capacity. Disabled AI causes no provider access. Keep keys out of Git and shared AI-session exports.
+
+Official integration references checked 11 November 2026: [Chat API](https://openrouter.ai/docs/api_reference/overview), [structured outputs](https://openrouter.ai/docs/guides/features/structured-outputs), [routing](https://openrouter.ai/docs/guides/routing/provider-selection), [free models and quotas](https://openrouter.ai/collections/free-models). Free availability is quota-limited and can change; no credit purchase is required for the documented `:free` variants.
 
 ## Verification and submission
 

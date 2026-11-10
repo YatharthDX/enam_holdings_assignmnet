@@ -11,7 +11,7 @@ flowchart TD
   A --> S["Shared public source cache"]
   S --> P["NSE, Yahoo and issuer originals"]
   W --> N["Profiles, paths and reviewed facts"]
-  A -. "Local explicit opt-in" .-> M["Gemini or OpenAI"]
+  A -. "Local explicit opt-in" .-> M["OpenRouter, Gemini or OpenAI"]
 ```
 
 One image serves static native-JavaScript modules and JSON routes. Python threads execute bounded acquisition/research jobs. SQLite stores shared public source data and separately owned private rows; raw public PDFs are retained by hash under a bounded data directory.
@@ -91,7 +91,7 @@ The application creates no backups. The plan's proposed 30-day expiry for delete
 
 ## Optional models and agents
 
-Local explicit opt-in supports Gemini/OpenAI through one structured-output workflow. It sends only up to 18 public passages/36,000 characters from at most five documents. Private names, notes, holdings and reviewed facts are excluded. Citation/page/numeric-literal checks establish provenance, not semantic entailment; interpretations are labelled and unsupported findings are withheld.
+Local explicit opt-in defaults to OpenRouter and also supports Gemini/OpenAI through one structured-output workflow. OpenRouter accepts only the free router or explicit `:free` IDs, requests strict schema-capable zero-priced endpoints and disables provider fallback. Its Chat Completions adapter discards reasoning text and maps visible output into the shared verifier. Actual model and reported cost remain distinct from selected route and list-price estimates. The dynamic free route may choose different models for new uncached requests; pin a supported `:free` ID for reproducible evaluation. It sends only up to 18 public passages/36,000 characters from at most five documents. Private names, notes, holdings and reviewed facts are excluded. Citation/page/numeric-literal checks establish provenance, not semantic entailment; interpretations are labelled and unsupported findings are withheld.
 
 Caches separate provider/model/lens/document/prompt identities. Ownership renewal protects long calls; at most two generation jobs run. Tokens, latency and available estimates are recorded. No automatic retry or provider fallback is made. Metadata diagnostics are GET-only; live inference/cost has not been validated in this release build.
 

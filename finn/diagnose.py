@@ -3,6 +3,7 @@ import argparse
 import json
 import re
 import time
+from decimal import Decimal, InvalidOperation
 
 from . import llm
 
@@ -21,6 +22,32 @@ def check(list_models=False, fetch=None):
             result.update(ok=False, code="KEY_NOT_CONFIGURED", action="Set " + info["key_env"] + " in .env and recreate the container.")
             return result
         provider, model = info["provider"], info["model"]
+        if provider == "openrouter":
+            headers = {"Authorization": "Bearer " + llm.key(provider)}
+            endpoint = llm.OPENROUTER_API + ("/models?max_price=0&supported_parameters=structured_outputs&output_modalities=text" if list_models else "/key")
+            body = (fetch or llm.get_json)(endpoint, headers, provider, timeout=15)
+            if list_models:
+                names = []
+                records = body.get("data")
+                for row in records if isinstance(records, list) else []:
+                    if not isinstance(row, dict) or not llm.valid_model(provider, row.get("id")):
+                        continue
+                    pricing = row.get("pricing")
+                    try:
+                        free = isinstance(pricing, dict) and all(Decimal(str(pricing.get(k, "0" if k == "request" else "NaN"))) == 0
+                                                                for k in ("prompt", "completion", "request"))
+                    except (InvalidOperation, ValueError):
+                        free = False
+                    parameters = row.get("supported_parameters")
+                    if free and isinstance(parameters, list) and "structured_outputs" in parameters:
+                        names.append(row["id"])
+                result.update(ok=True, code="MODEL_CATALOG_ACCESS_OK", models=sorted(set(names))[:100], more_pages=False)
+            else:
+                if not isinstance(body.get("data"), dict):
+                    raise llm.ProviderError("OpenRouter returned invalid key metadata.", "KEY_METADATA_INVALID")
+                result.update(ok=True, code="KEY_ACCESS_OK", operation="key_metadata")
+            result["note"] = "Read-only key/catalog access does not prove generation quota, schema acceptance or free-model availability. No answer was generated."
+            return result
         if provider == "gemini":
             endpoint = llm.GEMINI_ENDPOINT.rstrip("/") + ("?pageSize=100" if list_models else "/" + model)
             headers = {"x-goog-api-key": llm.key(provider)}
@@ -58,7 +85,7 @@ def check(list_models=False, fetch=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--models", action="store_true", help="List one bounded page of model IDs instead of retrieving the selected model.")
+    parser.add_argument("--models", action="store_true", help="List bounded model metadata; OpenRouter lists schema-capable free IDs. Never generates.")
     args = parser.parse_args()
     result = check(list_models=args.models)
     print(json.dumps(result, indent=2))

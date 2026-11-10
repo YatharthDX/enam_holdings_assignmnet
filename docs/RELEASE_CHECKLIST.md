@@ -22,20 +22,21 @@ See [PLAN_AUDIT.md](PLAN_AUDIT.md) for a page-by-page audit. Human-reviewed acco
 
 ## Verified during the M6 build
 
-- **140 Python tests passed** under Python 3.12 with the pinned runtime dependencies. This includes actual loopback HTTP, controlled unseeded/cold-ticker indexing, exact source evidence, reviewed comparison and as-of behavior.
+- **153 Python tests passed** under Python 3.12 with the pinned runtime dependencies. This includes actual loopback HTTP, controlled unseeded/cold-ticker indexing, exact source evidence, reviewed comparison and as-of behavior.
 - Two-cookie-jar tests verify private notes, holdings and facts do not cross workspaces. Tests cover signed-cookie tampering/expiry, CSRF/origin, secure-proxy cookies, consent expiry, profile withdrawal, erasure and disposable migration safety.
 - Pipeline tests cover parser-version reuse, old source revision retention, failed replacement, filing grouping/amendments, tracked refresh, stale-worker suppression and Decimal/quarterly arithmetic.
-- Existing source/threshold/provider-failure and optional Gemini/OpenAI response/citation/cache tests remain included. No real model call was made.
+- Existing source/threshold/provider-failure and optional OpenRouter/Gemini/OpenAI response/citation/cache tests remain included. No real model call was made.
 - Browser interactions verified workspace creation, generic source discovery using explicitly controlled originals, candidate review/prefill/save, a guidance/actual comparison, source sheets, historical cutoff, identity match, private note save and account controls.
 - Phone widths 360, 390 and 430 px were checked without page-level horizontal overflow. Financial tables scroll within their container.
 - JavaScript/JSON/YAML syntax and local documentation links passed checks. Applying the ZIP over a copied M5 Git checkout preserved its `.env`, Git HEAD, source page index, market bars and public model cache. The first normal local workspace adopted its saved alert thresholds and read state; upgraded HTTP smoke and disposable-session acceptance both passed.
+- OpenRouter transport, default/auto/explicit selection, free-price/schema guards, actual-model/cost normalization, redacted failures, metadata diagnostics, frozen job selection and HTTP result reuse are covered with controlled replies. No user key or real inference was used.
 - No QA database, generated fixture original, private session or export is included in the overlay.
 
 Docker is not installed in the build environment. No authenticated GitHub/Render deployment target is connected. Tests use controlled source responses; they do not establish current upstream access, actual live inference, a real cloud deployment or an actual CI run.
 
 ## Operator acceptance — record commit, date and observed result
 
-- [ ] Apply the M5 overlay, preserve the named volume and existing `.env`, set local flags/AI off, recreate Docker and confirm `0.6.0`.
+- [ ] Apply the M6.1 overlay, preserve the named volume and existing `.env`, set local flags/AI off, recreate Docker and confirm `0.6.1`.
 - [ ] Run the actual container suite, `python -m finn.smoke` and `python -m finn.acceptance --sessions-only`; save actual output.
 - [ ] Open the first normal local workspace. Verify adopted M5 preferences/read alerts if present. Export useful work before its 24-hour expiry.
 - [ ] In a separate clean checkout/project/volume, build and inspect the same workflows. Preserve the working repo/data; do not reset its volume.

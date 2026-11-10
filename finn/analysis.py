@@ -319,14 +319,19 @@ def usage_record(response, selected_model, elapsed):
     selected_provider = response.get("_provider") or llm.provider()
     known = selected_provider == "openai" and selected_model in ("gpt-5.4-mini", DEFAULT_MODEL)
     cost = ((tokens_in - cached) * .75 + cached * .075 + tokens_out * 4.5) / 1_000_000 if known else None
+    reported = usage.get("provider_reported_usd") if selected_provider == "openrouter" else None
+    if type(reported) not in (int, float) or not 0 <= reported < float("inf"):
+        reported = None
     return {"input_tokens": tokens_in, "output_tokens": tokens_out, "cached_input_tokens": cached,
             "estimated_usd": round(cost, 6) if cost is not None else None,
+            "provider_reported_usd": reported,
             "pricing_date": "2026-11-10" if known else None, "seconds": round(elapsed, 1),
             "response_id": str(response.get("id", ""))[:100], "provider": selected_provider,
             "reasoning_tokens": count(usage.get("reasoning_tokens")),
             "actual_model": response.get("_actual_model") or selected_model,
-            "billing_note": "Free-tier Gemini usage is quota-limited. FINN cannot inspect your project billing plan."
-                            if selected_provider == "gemini" else "Estimated list price; provider billing is authoritative."}
+            "billing_note": ("FINN requested free-only OpenRouter routing. Reported cost comes from the provider; check OpenRouter Activity for billing."
+                             if selected_provider == "openrouter" else "Free-tier Gemini usage is quota-limited. FINN cannot inspect your project billing plan."
+                             if selected_provider == "gemini" else "Estimated list price; provider billing is authoritative.")}
 
 
 NUMBER = re.compile(r"(?<![A-Za-z0-9])[-+]?\d[\d,]*(?:\.\d+)?")

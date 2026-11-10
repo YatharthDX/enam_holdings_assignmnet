@@ -86,7 +86,7 @@ The assignment asks for a focused working prototype across Push, Pull and Networ
 | Consent/correction/withdrawal | Local real import requires recorded purpose/provenance/expiry; ID merge and delete controls | Attestation only; public imports synthetic only |
 | Postgres non-owner RLS | Explicit SQLite owner filtering tested across two cookie jars | Stack deviation; production RLS not implemented |
 | Deleted-data backups ≤30 days | No application backup service exists | Proposed policy must be implemented/tested if backups are introduced |
-| Model privacy/efficiency | Optional Gemini/OpenAI, public passages only, citation/number checks, result cache, token/latency records | No live inference/cost benchmark in this build; no paid fallback |
+| Model privacy/efficiency | Optional OpenRouter/Gemini/OpenAI, public passages only, citation/number checks, result cache, token/latency records | No live inference/cost benchmark in this build; no paid fallback |
 | Code handles matching/arithmetic/permissions | Deterministic retrieval/ranking/thresholds/comparisons/paths; explicit review | No autonomous agent actions or inferred contact outreach |
 | Push/Pull/People acceptance | Controlled HTTP/indexer, arithmetic, isolation, namesake and recovery tests | Ten-claim manual source audit, real ticker and full exchange window remain operator work |
 | 90-second phone journey | Phone layout and new controls checked | A second person's timed run remains pending |

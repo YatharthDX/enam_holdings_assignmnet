@@ -26,20 +26,20 @@ class ProviderTests(unittest.TestCase):
     def setUp(self):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
-        env = patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "0", "FINN_ENABLE_LLM": "1", "FINN_DATA_DIR": folder.name, "GEMINI_API_KEY": "", "OPENAI_API_KEY": "",
+        env = patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "0", "FINN_ENABLE_LLM": "1", "FINN_DATA_DIR": folder.name, "GEMINI_API_KEY": "", "OPENAI_API_KEY": "", "OPENROUTER_API_KEY": "", "FINN_OPENROUTER_MODEL": "",
                          "FINN_LLM_PROVIDER": "auto", "FINN_GEMINI_MODEL": "", "FINN_OPENAI_MODEL": "",
                          "FINN_RESEARCH_MODEL": ""})
         env.start()
         self.addCleanup(env.stop)
 
-    def test_no_key_defaults_to_unconfigured_gemini_without_network(self):
+    def test_no_key_defaults_to_unconfigured_openrouter_without_network(self):
         with patch("finn.llm.post_json") as post:
             info = llm.public_config()
             self.assertFalse(info["configured"])
-            self.assertEqual(info["provider"], "gemini")
-            self.assertEqual(info["model"], llm.GEMINI_MODEL)
+            self.assertEqual(info["provider"], "openrouter")
+            self.assertEqual(info["model"], llm.OPENROUTER_MODEL)
             self.assertFalse(post.called)
-        with self.assertRaisesRegex(analysis.AnalysisError, "GEMINI_API_KEY"):
+        with self.assertRaisesRegex(analysis.AnalysisError, "OPENROUTER_API_KEY"):
             analysis.begin("INFY", "guidance")
 
     def test_auto_with_each_key_and_both_keys(self):
@@ -64,7 +64,7 @@ class ProviderTests(unittest.TestCase):
     def test_invalid_provider_and_model_are_rejected_before_network(self):
         with patch.dict(os.environ, {"FINN_LLM_PROVIDER": "other"}):
             with self.assertRaises(llm.ProviderError): llm.public_config()
-        with patch.dict(os.environ, {"FINN_GEMINI_MODEL": "https://other.example/steal"}):
+        with patch.dict(os.environ, {"FINN_LLM_PROVIDER": "gemini", "FINN_GEMINI_MODEL": "https://other.example/steal"}):
             with self.assertRaises(llm.ProviderError): llm.public_config()
 
     def test_model_overrides_are_independent_and_legacy_is_openai_only(self):

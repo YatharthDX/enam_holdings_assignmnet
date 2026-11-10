@@ -1,4 +1,4 @@
-"""Two explicit model transports with one response envelope and no fallback.
+"""Three explicit model transports with one response envelope and no fallback.
 
 Only public passages reach a provider. Keys stay in server environment variables;
 no request body, provider error body or credential is written to logs.
@@ -14,10 +14,14 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 OPENAI_MODEL = "gpt-5.4-mini-2026-03-17"
 GEMINI_MODEL = "gemini-3.8-flash"
+OPENROUTER_MODEL = "openrouter/free"
+OPENROUTER_API = "https://openrouter.ai/api/v1"
+OPENROUTER_ENDPOINT = OPENROUTER_API + "/chat/completions"
 OPENAI_ENDPOINT = "https://api.openai.com/v1/responses"
 GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/"
-KEY_ENV = {"gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY"}
-LABEL = {"gemini": "Google Gemini", "openai": "OpenAI"}
+KEY_ENV = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY"}
+LABEL = {"openrouter": "OpenRouter", "gemini": "Google Gemini", "openai": "OpenAI"}
+DEFAULT_PROVIDER = "openrouter"
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 DEFAULT_TIMEOUT_SECONDS = 240
 
@@ -54,7 +58,7 @@ def network_error(exc, selected, generation=True):
     return ProviderError(label + " [" + code + "]: " + explanation + note, code)
 
 
-def http_error(exc, selected):
+def response_error(body, code, selected):
     """Expose only allowlisted codes and field names, never raw provider text."""
     label = LABEL[selected]
     statuses = {"INVALID_ARGUMENT", "FAILED_PRECONDITION", "PERMISSION_DENIED", "UNAUTHENTICATED",
@@ -65,10 +69,10 @@ def http_error(exc, selected):
     field_names = {"responseJsonSchema", "responseSchema", "responseFormat", "responseMimeType",
                    "maxOutputTokens", "thinkingConfig", "thinkingLevel", "thinkingBudget",
                    "systemInstruction", "contents"}
+    if selected == "openrouter":
+        field_names.update({"response_format", "json_schema", "max_tokens", "require_parameters"})
     status, reasons, fields = "", set(), set()
     try:
-        raw = exc.read(32769)
-        body = json.loads(raw) if len(raw) <= 32768 else {}
         error = body.get("error", {}) if isinstance(body, dict) else {}
         if not isinstance(error, dict):
             error = {}
@@ -83,20 +87,25 @@ def http_error(exc, selected):
                     messages.append(str(violation.get("field", "")))
         # Reduce arbitrary text to fixed public parameter names; discard the text.
         mentioned = " ".join(messages).replace("_", "").lower()
-        fields = {name for name in field_names if name.lower() in mentioned}
+        fields = {name for name in field_names if name.replace("_", "").lower() in mentioned}
     except Exception:
         pass
     messages = {
         400: "The provider rejected the request. The cause is not established without a more specific code.",
         401: "The provider rejected authentication. Check the selected server-side API key.",
+        402: "The provider reports a credit or account limit. FINN's OpenRouter integration permits free models only; inspect the selected free model and account limits.",
         403: "The provider denied access. Check API/key restrictions and model permissions.",
         404: "The model or API resource is unavailable for this project.",
         429: "A rate or project quota limit was reached. Check quota or wait for reset; keep billing disabled for zero spend.",
+        502: "The provider could not complete the request. Inspect service availability and retry explicitly if needed.",
         503: "The provider is temporarily unavailable. Retry explicitly after recovery.",
         504: "The provider reported a processing deadline. This differs from a local network timeout.",
     }
-    code = "HTTP_" + str(exc.code)
-    message = messages.get(exc.code, "The provider returned an HTTP error.")
+    http_status = code
+    code = "HTTP_" + str(http_status)
+    message = messages.get(http_status, "The provider returned an HTTP error.")
+    if selected == "openrouter" and http_status == 404:
+        message = "No matching free endpoint was available for this model and required JSON schema. Try later or explicitly select another schema-capable :free model."
     if reasons & {"API_KEY_INVALID", "API_KEY_EXPIRED", "API_KEY_BLOCKED"}:
         code, message = "API_KEY_REJECTED", "The provider reports an invalid, expired or blocked key. Replace the local key from the provider's key page."
     elif any(reason.startswith("API_KEY_") for reason in reasons):
@@ -107,10 +116,19 @@ def http_error(exc, selected):
         code, message = "PROJECT_PRECONDITION", "The project does not satisfy a provider prerequisite. Check free-tier/model/region eligibility; leave billing disabled when zero spend is required."
     elif status == "INVALID_ARGUMENT" and fields:
         code, message = "REQUEST_FORMAT_REJECTED", "The provider rejected request formatting or settings. Mentioned request parameters: " + ", ".join(sorted(fields)) + "."
-    details = {"http_status": exc.code, "status": status, "reasons": sorted(reasons), "fields": sorted(fields)}
-    tags = ["HTTP " + str(exc.code), *([status] if status else []), *sorted(reasons)]
+    details = {"http_status": http_status, "status": status, "reasons": sorted(reasons), "fields": sorted(fields)}
+    tags = ["HTTP " + str(http_status), *([status] if status else []), *sorted(reasons)]
     return ProviderError(label + " [" + "; ".join(tags) + "]: " + message
                          + " No automatic retry or provider fallback was made.", code, details)
+
+
+def http_error(exc, selected):
+    try:
+        raw = exc.read(32769)
+        body = json.loads(raw) if len(raw) <= 32768 else {}
+    except Exception:
+        body = {}
+    return response_error(body, exc.code, selected)
 
 
 def key(provider):
@@ -123,23 +141,36 @@ def enabled():
 
 
 def provider():
-    selected = os.environ.get("FINN_LLM_PROVIDER", "auto").strip().lower() or "auto"
-    if selected not in ("auto", "gemini", "openai"):
-        raise ProviderError("Set FINN_LLM_PROVIDER to auto, gemini or openai.")
+    selected = os.environ.get("FINN_LLM_PROVIDER", DEFAULT_PROVIDER).strip().lower() or DEFAULT_PROVIDER
+    if selected not in ("auto", *KEY_ENV):
+        raise ProviderError("Set FINN_LLM_PROVIDER to openrouter, gemini, openai or auto.")
     if selected != "auto":
         return selected
-    # Gemini wins when both keys exist. Selection never changes after a failure.
-    return "gemini" if key("gemini") or not key("openai") else "openai"
+    # Choose once at job creation. An error never changes that selection.
+    return next((name for name in KEY_ENV if key(name)), DEFAULT_PROVIDER)
+
+
+def valid_model(selected, value):
+    if not isinstance(value, str):
+        return False
+    if selected == "openrouter":
+        return bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}/[A-Za-z0-9][A-Za-z0-9._-]{0,149}:free", value)
+                    or value == OPENROUTER_MODEL)
+    return selected in KEY_ENV and bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", value))
 
 
 def model(selected=None):
     selected = selected or provider()
     if selected == "gemini":
         value = os.environ.get("FINN_GEMINI_MODEL", "").strip() or GEMINI_MODEL
+    elif selected == "openrouter":
+        value = os.environ.get("FINN_OPENROUTER_MODEL", "").strip() or OPENROUTER_MODEL
     else:
         value = (os.environ.get("FINN_OPENAI_MODEL", "").strip()
                  or os.environ.get("FINN_RESEARCH_MODEL", "").strip() or OPENAI_MODEL)
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", value):
+    if not valid_model(selected, value):
+        if selected == "openrouter":
+            raise ProviderError("Use openrouter/free or an author/model:free ID in FINN_OPENROUTER_MODEL. Paid OpenRouter model IDs are disabled.")
         raise ProviderError("The selected model must be a model identifier, not a URL or path.")
     return value
 
@@ -162,8 +193,9 @@ def public_config():
     selected = provider()
     return {"enabled": True, "provider": selected, "provider_label": LABEL[selected], "model": model(selected),
             "configured": bool(key(selected)), "key_env": KEY_ENV[selected],
-            "selection": os.environ.get("FINN_LLM_PROVIDER", "auto").strip().lower() or "auto",
-            "automatic_order": ["gemini", "openai"], "fallback_enabled": False,
+            "selection": os.environ.get("FINN_LLM_PROVIDER", DEFAULT_PROVIDER).strip().lower() or DEFAULT_PROVIDER,
+            "automatic_order": list(KEY_ENV), "fallback_enabled": False,
+            "free_only": selected == "openrouter", "dynamic_model": selected == "openrouter" and model(selected) == OPENROUTER_MODEL,
             "timeout_seconds": timeout_seconds()}
 
 
@@ -178,7 +210,7 @@ def request_json(endpoint, payload, headers, selected, timeout=None):
         timeout = timeout_seconds() if payload is not None else 15
     request = Request(endpoint, data=json.dumps(payload).encode() if payload is not None else None,
                       method="POST" if payload is not None else "GET", headers={
-        "Content-Type": "application/json", "User-Agent": "FINN/0.3.3", **headers})
+        "Content-Type": "application/json", "User-Agent": "FINN/0.6.1", **headers})
     try:
         with build_opener(NoRedirect()).open(request, timeout=timeout) as response:
             raw = response.read(MAX_RESPONSE_BYTES + 1)
@@ -187,6 +219,10 @@ def request_json(endpoint, payload, headers, selected, timeout=None):
             body = json.loads(raw)
             if not isinstance(body, dict):
                 raise ProviderError(label + " returned an invalid response object.")
+            if "error" in body:
+                error = body["error"] if isinstance(body["error"], dict) else {}
+                code = error.get("code")
+                raise response_error(body, code if type(code) is int and 400 <= code <= 599 else 502, selected)
             return body
     except HTTPError as exc:
         raise http_error(exc, selected) from None
@@ -236,15 +272,67 @@ def normalize_gemini(body):
             "_actual_model": str(body.get("modelVersion", ""))[:100]}
 
 
+def normalize_openrouter(body):
+    """Map visible chat output/usage to FINN's verifier; discard reasoning text."""
+    choices = body.get("choices")
+    if not isinstance(choices, list) or len(choices) != 1 or not isinstance(choices[0], dict):
+        raise ProviderError("OpenRouter returned no single usable answer.", "INVALID_RESPONSE")
+    choice = choices[0]
+    if "error" in choice:
+        error = choice["error"] if isinstance(choice["error"], dict) else {}
+        code = error.get("code")
+        raise response_error({"error": error}, code if type(code) is int and 400 <= code <= 599 else 502, "openrouter")
+    message = choice.get("message")
+    message = message if isinstance(message, dict) else {}
+    finish = choice.get("finish_reason")
+    refused = finish == "content_filter" or bool(message.get("refusal"))
+    visible = message.get("content")
+    if not isinstance(visible, str):
+        visible = ""
+    content = [{"type": "refusal"}] if refused else [{"type": "output_text", "text": visible}]
+    raw_usage = body.get("usage")
+    raw_usage = raw_usage if isinstance(raw_usage, dict) else {}
+    prompt, completion = raw_usage.get("prompt_tokens"), raw_usage.get("completion_tokens")
+    usage = None
+    if all(type(n) is int and n >= 0 for n in (prompt, completion)):
+        def tokens(name, field):
+            details = raw_usage.get(name)
+            n = details.get(field) if isinstance(details, dict) else None
+            return n if type(n) is int and n >= 0 else 0
+        usage = {"input_tokens": prompt, "output_tokens": completion,
+                 "input_tokens_details": {"cached_tokens": tokens("prompt_tokens_details", "cached_tokens")},
+                 "reasoning_tokens": tokens("completion_tokens_details", "reasoning_tokens")}
+        cost = raw_usage.get("cost")
+        if type(cost) in (int, float) and 0 <= cost < float("inf"):
+            usage["provider_reported_usd"] = cost
+    actual = body.get("model")
+    # Never persist arbitrary provider identifiers/error text as model metadata.
+    if not isinstance(actual, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:/-]{0,249}", actual):
+        actual = ""
+    return {"status": "completed" if refused or finish == "stop" and not message.get("tool_calls") else "incomplete",
+            "output": [{"type": "message", "content": content}], "usage": usage,
+            "id": str(body.get("id", ""))[:100], "_provider": "openrouter", "_actual_model": actual}
+
+
 def generate(selected, selected_model, instructions, evidence, schema):
     if not enabled():
         raise ProviderError("Optional AI synthesis is disabled. Set FINN_ENABLE_LLM=1 to enable it.")
     if selected not in KEY_ENV or not key(selected):
         raise ProviderError("Configure the selected provider's server-side API key before analysis.")
     # selected_model comes from validated configuration frozen when the job began.
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", selected_model):
+    if not valid_model(selected, selected_model):
         raise ProviderError("Invalid model identifier.")
     text = json.dumps(evidence, ensure_ascii=False)
+    if selected == "openrouter":
+        payload = {"model": selected_model, "stream": False, "max_tokens": 8192,
+                   "messages": [{"role": "system", "content": instructions}, {"role": "user", "content": text}],
+                   "response_format": {"type": "json_schema", "json_schema": {
+                       "name": "finn_research", "strict": True, "schema": schema}},
+                   "provider": {"require_parameters": True, "allow_fallbacks": False,
+                                "max_price": {"prompt": 0, "completion": 0, "request": 0}}}
+        body = post_json(OPENROUTER_ENDPOINT, payload, {"Authorization": "Bearer " + key(selected),
+                                                     "X-OpenRouter-Title": "FINN"}, selected)
+        return normalize_openrouter(body)
     if selected == "openai":
         payload = {"model": selected_model, "store": False, "max_output_tokens": 3500,
                    "instructions": instructions, "input": text,

@@ -1,4 +1,4 @@
-import {esc,icon,personCard} from './ui.js?v=0.6.0.2';
+import {esc,icon,personCard} from './ui.js?v=0.6.1';
 
 export function identityForm() {
   return `<details class="panel identity-panel"><summary>Check a person's identity ${icon('down',16)}</summary><p class="panel-intro">A name alone cannot establish an introduction. Compare a recorded employer, role and tenure at the date of the event.</p>

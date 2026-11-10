@@ -37,7 +37,7 @@ async def lifespan(application):
             refresher.stop()
 
 
-app = FastAPI(title="FINN investor desk", version="0.6.0", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(title="FINN investor desk", version="0.6.1", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/assets", StaticFiles(directory=WEB), name="assets")
 
 
@@ -92,7 +92,7 @@ def index():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "mode": "live_and_replay", "version": "0.6.0", "llm_enabled": llm.enabled(),
+    return {"status": "ok", "mode": "live_and_replay", "version": "0.6.1", "llm_enabled": llm.enabled(),
             "public_demo": runtime.public_demo(), "interactive_demo": runtime.interactive()}
 
 

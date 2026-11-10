@@ -13,7 +13,7 @@ FINN_TRUST_PROXY=0
 FINN_ENABLE_LLM=0
 ```
 
-Confirm `/health` version `0.6.0`. Run the container suite, smoke and `python -m finn.acceptance --sessions-only`. A fresh machine uses the normal Docker build from README; the cached-image override requires an existing compatible image.
+Confirm `/health` version `0.6.1`. Run the container suite, smoke and `python -m finn.acceptance --sessions-only`. A fresh machine uses the normal Docker build from README; the cached-image override requires an existing compatible image.
 
 ## Render Free
 
@@ -23,7 +23,7 @@ Confirm `/health` version `0.6.0`. Run the container suite, smoke and `python -m
 4. Wait for build/health success and copy the actual returned HTTPS URL. No deployment exists merely because the Blueprint is committed.
 5. Open that URL in a fresh browser. The initial view is the dated seven-day historical brief. Inspect the guidance/source/contact path, then **Open my workspace**. Check private note and alert controls. Another browser must not see that private note.
 6. Test generic document discovery if upstreams are accessible from the host. It is bounded to five starts/workspace/hour and 20 globally/hour. Manual live refresh is globally limited to once/15 minutes. Models and scheduled source acquisition remain disabled even if someone misconfigures their enable flags.
-7. Check `/health`: version `0.6.0`, public true, LLM false. Run against the actual origin:
+7. Check `/health`: version `0.6.1`, public true, LLM false. Run against the actual origin:
 
 ```bash
 python -m finn.smoke --base-url https://YOUR-SERVICE.onrender.com --expect-public-demo --timeout 60
