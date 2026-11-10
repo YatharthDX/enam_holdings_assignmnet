@@ -26,7 +26,7 @@ class ProviderTests(unittest.TestCase):
     def setUp(self):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
-        env = patch.dict(os.environ, {"FINN_ENABLE_LLM": "1", "FINN_DATA_DIR": folder.name, "GEMINI_API_KEY": "", "OPENAI_API_KEY": "",
+        env = patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "0", "FINN_ENABLE_LLM": "1", "FINN_DATA_DIR": folder.name, "GEMINI_API_KEY": "", "OPENAI_API_KEY": "",
                          "FINN_LLM_PROVIDER": "auto", "FINN_GEMINI_MODEL": "", "FINN_OPENAI_MODEL": "",
                          "FINN_RESEARCH_MODEL": ""})
         env.start()

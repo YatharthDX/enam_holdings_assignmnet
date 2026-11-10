@@ -257,7 +257,8 @@ def public_job(row):
 
 def status(symbol, mode="business"):
     if not llm.enabled():
-        return {"enabled": False, "job": None, "lens": mode, "lenses": []}
+        from .runtime import public_demo
+        return {"enabled": False, "job": None, "lens": mode, "lenses": [], "public_demo": public_demo()}
     symbol, mode = documents.ticker(symbol), lens(mode)
     data, selected_model, key = context(symbol, mode)
     with live_store.connection() as db:

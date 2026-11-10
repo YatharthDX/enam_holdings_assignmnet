@@ -1,0 +1,16 @@
+# Public presentation only: no paid instance, disk, database or model key.
+services:
+  - type: web
+    name: finn-demo
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: FINN_PUBLIC_DEMO
+        value: "1"
+      - key: FINN_ENABLE_LLM
+        value: "0"
+      - key: FINN_AUTO_REFRESH
+        value: "0"

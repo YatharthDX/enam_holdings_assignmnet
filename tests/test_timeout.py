@@ -15,7 +15,7 @@ class TimeoutTests(unittest.TestCase):
     def setUp(self):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
-        env = patch.dict(os.environ, {"FINN_ENABLE_LLM": "1", "FINN_DATA_DIR": folder.name, "FINN_LLM_PROVIDER": "gemini",
+        env = patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "0", "FINN_ENABLE_LLM": "1", "FINN_DATA_DIR": folder.name, "FINN_LLM_PROVIDER": "gemini",
                          "GEMINI_API_KEY": "fixture-key", "FINN_GEMINI_MODEL": "", "FINN_LLM_TIMEOUT_SECONDS": ""})
         env.start()
         self.addCleanup(env.stop)

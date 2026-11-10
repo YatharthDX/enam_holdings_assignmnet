@@ -1,6 +1,6 @@
-import {clearRecords, esc, nav, openSheet, route} from './ui.js';
-import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js';
-import {liveBriefView} from './live-view.js';
+import {clearRecords, esc, nav, openSheet, route} from './ui.js?v=0.5.0';
+import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.5.0';
+import {liveBriefView} from './live-view.js?v=0.5.0';
 
 const workspace = document.querySelector('#workspace');
 const sheet = document.querySelector('#sheet');
@@ -91,21 +91,28 @@ async function render() {
   clearTimeout(pollTimer);
   const version=++revision;
   if (activeHash) scrollPositions.set(activeHash, window.scrollY);
-  const destination=location.hash || '#brief';
+  let destination=location.hash || '#brief';
   const aiWasOpen=activeHash===destination && Boolean(document.querySelector('#optional-ai')?.open);
-  const {view,params}=locationState();
+  let {view,params}=locationState();
   sheet.close();
   nav(view);
   workspace.setAttribute('aria-busy','true');
   try {
     catalog ||= await api('catalog');
     if (version!==revision) return;
+    const readOnly=Boolean(catalog.runtime?.read_only);
+    if (readOnly && view==='brief' && !params.has('mode')) {
+      params.set('mode','replay');
+      if (!params.has('window')) params.set('window','7d');
+      destination=route('brief',Object.fromEntries(params));
+      history.replaceState(null,'',destination);
+    }
     let draw;
     if (view==='brief') {
       const mode=params.get('mode') || 'live';
       const data=await api('brief',{mode,window:params.get('window') || '24h',
         start:params.get('start'),end:params.get('end')});
-      draw=()=>mode==='live' ? liveBriefView(data,params,params.get('window')==='custom') :
+      draw=()=>mode==='live' ? liveBriefView(data,params,params.get('window')==='custom',{readOnly}) :
         briefView(data,params,params.get('window')==='custom');
       if (mode==='live') {
         liveSignature=signature({job:data.job,unread:data.alerts.filter(a=>!a.seen).length});
@@ -113,7 +120,7 @@ async function render() {
     } else if (view==='research') {
       const symbol=params.get('ticker') || 'INFY';
       const data=await api('research/'+encodeURIComponent(symbol),{q:params.get('q'),lens:params.get('lens')});
-      draw=()=>{activeResearch=data;return researchView(data,catalog,{aiOpen:aiWasOpen || params.get('ai')==='1'});};
+      draw=()=>{activeResearch=data;return researchView(data,catalog,{aiOpen:aiWasOpen || params.get('ai')==='1',readOnly});};
     } else if (view==='people') {
       const q=params.get('q')||'',symbol=params.get('symbol')||'';
       const data=await api('people',{q,symbol});
@@ -125,14 +132,14 @@ async function render() {
     }
     if (version!==revision) return;
     clearRecords();
-    workspace.innerHTML=draw();
+    workspace.innerHTML=(readOnly ? '<aside class="demo-notice" aria-label="Public demo"><strong>Public demo · Read only</strong><span>Historical evidence · Fictional network</span></aside>' : '')+draw();
     const mode = view === 'research' ? 'Document index' : view === 'people' ? 'Fictional network' :
       view === 'brief' && params.get('mode')!=='replay' ? 'Live sources' : 'Historical replay';
     document.querySelector('#mode-text').textContent = mode;
     document.title=(workspace.querySelector('h1')?.textContent || 'Portfolio brief')+' · FINN';
     activeHash=destination;
     window.scrollTo(0,scrollPositions.get(destination)||0);
-    if (view==='brief' && params.get('mode')!=='replay') {
+    if (view==='brief' && params.get('mode')!=='replay' && !readOnly) {
       if (lastNotice) document.querySelector('#live-status').textContent=lastNotice;
       lastNotice='';
       schedulePoll();

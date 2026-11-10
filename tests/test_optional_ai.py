@@ -11,7 +11,7 @@ class OptionalAITests(unittest.TestCase):
     def setUp(self):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
-        env = patch.dict(os.environ, {"FINN_DATA_DIR": folder.name, "FINN_ENABLE_LLM": "0",
+        env = patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "0", "FINN_DATA_DIR": folder.name, "FINN_ENABLE_LLM": "0",
                                      "FINN_LLM_PROVIDER": "gemini", "GEMINI_API_KEY": "fixture-key",
                                      "FINN_GEMINI_MODEL": "", "FINN_LLM_TIMEOUT_SECONDS": ""})
         env.start()

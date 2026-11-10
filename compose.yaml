@@ -6,6 +6,7 @@ services:
     volumes:
       - finn_data:/data
     environment:
+      FINN_PUBLIC_DEMO: "${FINN_PUBLIC_DEMO:-0}"
       FINN_ENABLE_LLM: "${FINN_ENABLE_LLM:-0}"
       FINN_LLM_PROVIDER: "${FINN_LLM_PROVIDER:-auto}"
       GEMINI_API_KEY: "${GEMINI_API_KEY:-}"

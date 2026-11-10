@@ -18,7 +18,7 @@ def http_error(body, code=400):
 
 class DiagnosticTests(unittest.TestCase):
     def setUp(self):
-        env = patch.dict(os.environ, {"FINN_ENABLE_LLM": "1", "FINN_LLM_PROVIDER": "gemini", "GEMINI_API_KEY": "private-secret-key",
+        env = patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "0", "FINN_ENABLE_LLM": "1", "FINN_LLM_PROVIDER": "gemini", "GEMINI_API_KEY": "private-secret-key",
                                      "FINN_GEMINI_MODEL": llm.GEMINI_MODEL})
         env.start()
         self.addCleanup(env.stop)

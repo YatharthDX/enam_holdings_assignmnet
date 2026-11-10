@@ -1,6 +1,6 @@
-import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js';
-import {modeSwitch, windowControls} from './live-view.js';
-import {analysisView} from './analysis-view.js';
+import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js?v=0.5.0';
+import {modeSwitch, windowControls} from './live-view.js?v=0.5.0';
+import {analysisView} from './analysis-view.js?v=0.5.0';
 
 function rangeChart(series) {
   const forecasts = series.forecasts;
@@ -81,9 +81,9 @@ export function researchView(data,catalog,options = {}) {
     <div class="evidence-topics" aria-label="Evidence topics">${['revenue','guidance','cash flow'].map(q=>
       `<a class="chip" href="${route('research',{ticker:c.symbol,q})}" ${data.query===q?'aria-current="true"':''}>${esc(q)}</a>`).join('')}</div>
     ${matches}<details class="routine"><summary>Source documents <b>${data.sources.length}</b> ${icon('down',15)}</summary>${citations}</details></section>`;
-  const noDocs = empty('No indexed sources for '+c.symbol,'Find primary documents for this ticker to build its evidence index.');
+  const noDocs = empty('No indexed sources for '+c.symbol,options.readOnly ? 'Index original documents for this ticker in your own local workspace. The public demo includes the prepared historical source set.' : 'Find primary documents for this ticker to build its evidence index.');
   const job = data.discovery;
-  const discovery = `<section class="discovery-panel" aria-label="Document discovery">
+  const discovery = options.readOnly ? '' : `<section class="discovery-panel" aria-label="Document discovery">
     <div><strong>Find primary documents</strong><p>Latest annual report and up to four call transcripts.</p></div>
     <button type="button" id="discover-documents" class="button secondary" ${job?.status==='running'?'disabled':''}>${job?.status==='running'?'Indexing…':'Find documents'} ${icon('book',16)}</button>
     <p id="discovery-status" class="discovery-status" role="status">${esc(job?.detail || 'Original documents are discovered via Screener’s public links.')}</p>

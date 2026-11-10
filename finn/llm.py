@@ -118,7 +118,8 @@ def key(provider):
 
 
 def enabled():
-    return os.environ.get("FINN_ENABLE_LLM", "0").strip().lower() in {"1", "true", "yes", "on"}
+    from .runtime import public_demo
+    return not public_demo() and os.environ.get("FINN_ENABLE_LLM", "0").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def provider():

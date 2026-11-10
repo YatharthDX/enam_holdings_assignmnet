@@ -2,6 +2,8 @@
 
 FINN's core prototype requires no LLM credentials. It combines a portfolio brief, source-backed research and a clearly fictional professional network. Optional AI synthesis is off by default.
 
+The hosted public presentation opens a dated historical replay. It is read-only: evidence, comparisons and fictional connections work, while fresh indexing, live acquisition and alert changes require the local workspace below. Public mode forces AI off at the server. See [deployment](docs/DEPLOYMENT.md) and the [remaining release checks](docs/RELEASE_CHECKLIST.md).
+
 ## Start a fresh clone
 
 Requirements: Docker with Compose. From the repository root:
@@ -12,9 +14,9 @@ docker compose up --build --wait
 curl -fsS http://localhost:8090/health
 ```
 
-Health should report version `0.4.0` and `llm_enabled:false`. No model key is required. The first build needs Docker Hub/PyPI access. Port 8090 can be changed with `FINN_PORT`.
+Health should report version `0.5.0`, `public_demo:false` and `llm_enabled:false`. No model key is required. The first build needs Docker Hub/PyPI access. Port 8090 can be changed with `FINN_PORT`.
 
-Existing users applying the update should follow the cached-image instructions in README. The ZIP preserves an existing `.env`; add `FINN_ENABLE_LLM=0` to keep the secondary feature disabled.
+Existing users applying the update should follow the cached-image instructions in README. The ZIP preserves an existing `.env`; set `FINN_PUBLIC_DEMO=0` for full local controls and `FINN_ENABLE_LLM=0` to keep the secondary feature disabled.
 
 ## Three-minute core review
 
@@ -35,9 +37,12 @@ Generic document retrieval/search works for indexed tickers. Structured determin
 
 ```bash
 docker compose exec -T app python -m unittest discover -s tests -v
+docker compose exec -T app python -m finn.smoke
 ```
 
 Tests use controlled upstream/model responses and make no real generation requests. They cover HTTP entry points, PDF ingestion/search, comparison boundaries, network paths, provider failures, optional-feature isolation, blocked generation while disabled, both model transports and cache/ownership behavior.
+
+The smoke command reads the running app's endpoints without starting discovery, refresh or analysis. For a deployed public URL use `python -m finn.smoke --base-url https://YOUR-SERVICE.onrender.com --expect-public-demo --timeout 60` after its first cold start.
 
 ## Optional AI review
 

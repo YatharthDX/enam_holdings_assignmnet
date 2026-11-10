@@ -6,6 +6,8 @@ import tempfile
 import threading
 import time
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 from urllib.error import HTTPError
 from urllib.request import ProxyHandler, Request, build_opener
 from unittest.mock import patch
@@ -13,6 +15,7 @@ from unittest.mock import patch
 import uvicorn
 
 from finn.app import app
+from finn import smoke
 
 
 class HttpTests(unittest.TestCase):
@@ -20,7 +23,7 @@ class HttpTests(unittest.TestCase):
     def setUpClass(cls):
         data = tempfile.TemporaryDirectory()
         cls.addClassCleanup(data.cleanup)
-        env = patch.dict(os.environ, {"FINN_ENABLE_LLM": "1", "FINN_DATA_DIR": data.name, "FINN_AUTO_REFRESH": "0",
+        env = patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "0", "FINN_ENABLE_LLM": "1", "FINN_DATA_DIR": data.name, "FINN_AUTO_REFRESH": "0",
                                      "FINN_LLM_PROVIDER": "openai", "GEMINI_API_KEY": ""})
         env.start()
         cls.addClassCleanup(env.stop)
@@ -210,3 +213,39 @@ class HttpTests(unittest.TestCase):
             self.assertTrue(info["comparison"])
             self.assertNotIn(b"private-secret", raw)
             self.assertNotIn("private-secret", " ".join(logs.output))
+
+    def test_public_demo_blocks_all_mutation_routes_before_any_work_is_queued(self):
+        from contextlib import ExitStack
+        with patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "1"}), ExitStack() as stack:
+            workers = [stack.enter_context(patch(name)) for name in [
+                "finn.app.discovery.begin", "finn.app.analysis.begin", "finn.app.live.refresh", "finn.app.live.update_settings"]]
+            before = self.read("/api/alert-settings")
+            for method, route in [("POST", "/api/research/INFY/discover"), ("POST", "/api/research/INFY/analyze"),
+                                  ("POST", "/api/live/refresh"), ("PUT", "/api/alert-settings"), ("POST", "/api/alerts/read")]:
+                with self.subTest(route=route):
+                    request = Request(self.base + route, data=b'{}', method=method,
+                                      headers={"Content-Type": "application/json"})
+                    with self.assertRaises(HTTPError) as error:
+                        self.client.open(request)
+                    self.assertEqual(error.exception.code, 403)
+                    self.assertIn(b"read-only", error.exception.read())
+            self.assertEqual(before, self.read("/api/alert-settings"))
+            for worker in workers:
+                worker.assert_not_called()
+
+    def test_public_demo_smoke_over_real_http_with_keys_present(self):
+        with patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "1", "FINN_ENABLE_LLM": "1",
+                                    "GEMINI_API_KEY": "private-fixture-key"}), patch("finn.llm.post_json") as post:
+            checks = smoke.run(self.base, expect_public_demo=True)
+            self.assertEqual(len(checks), 9)
+            self.assertNotIn(b"private-fixture-key", self.read("/api/catalog"))
+            post.assert_not_called()
+
+    def test_local_smoke_cli_and_wrong_public_expectation(self):
+        with patch.dict(os.environ, {"FINN_ENABLE_LLM": "0"}):
+            output = StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(smoke.main(["--base-url", self.base]), 0)
+            self.assertIn("Read-only checks passed", output.getvalue())
+            with self.assertRaisesRegex(smoke.SmokeError, "not configured"):
+                smoke.run(self.base, expect_public_demo=True)

@@ -1,0 +1,50 @@
+name: FINN checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: finn-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FINN_PORT: "8090"
+      FINN_PUBLIC_DEMO: "0"
+      FINN_ENABLE_LLM: "0"
+      FINN_AUTO_REFRESH: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check browser module syntax
+        run: |
+          for file in finn/assets/*.js; do
+            node --input-type=module --check < "$file"
+          done
+      - name: Build and start the actual container
+        run: docker compose up --build --wait --wait-timeout 120
+      - name: Run the complete test suite
+        run: docker compose exec -T app python -m unittest discover -s tests -v
+      - name: Check the running local workspace
+        run: docker compose exec -T app python -m finn.smoke
+      - name: Check the public demo boundary
+        env:
+          FINN_PUBLIC_DEMO: "1"
+          FINN_ENABLE_LLM: "1"
+          GEMINI_API_KEY: "ci-fixture-never-real"
+        run: |
+          docker compose up --no-build --force-recreate --wait --wait-timeout 120
+          docker compose exec -T app python -m finn.smoke --expect-public-demo
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose logs --tail=80 app
+      - name: Stop containers
+        if: always()
+        run: docker compose down

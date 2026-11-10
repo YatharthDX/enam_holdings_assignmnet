@@ -31,7 +31,7 @@ class AnalysisTests(unittest.TestCase):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.root = Path(temp.name)
-        env = patch.dict(os.environ, {"FINN_ENABLE_LLM": "1", "FINN_DATA_DIR": str(self.root / "db"),
+        env = patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "0", "FINN_ENABLE_LLM": "1", "FINN_DATA_DIR": str(self.root / "db"),
                                     "OPENAI_API_KEY": "test-key-never-real",
                                     "FINN_RESEARCH_MODEL": analysis.DEFAULT_MODEL,
                                     "FINN_LLM_PROVIDER": "openai", "FINN_OPENAI_MODEL": ""})

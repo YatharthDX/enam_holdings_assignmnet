@@ -1,4 +1,4 @@
-import {dateLabel, empty, esc, heading, icon, personCard, route, sourceButton} from './ui.js';
+import {dateLabel, empty, esc, heading, icon, personCard, route, sourceButton} from './ui.js?v=0.5.0';
 
 export function modeSwitch(mode) {
   return `<div class="mode-switch" aria-label="Data mode">
@@ -49,8 +49,12 @@ function feedStatus(data) {
     </details>`;
 }
 
-function settingsForm(data) {
+function settingsForm(data, readOnly = false) {
   const s=data.settings;
+  if (readOnly) return `<details class="panel alert-rules" id="alert-rules"><summary>Alert rules ${icon('down',16)}</summary>
+    <p class="panel-intro">Read only in this public demo. Configure monitoring in your own local workspace.</p>
+    <div class="rules-grid"><p>Daily price move <strong>±${esc(s.price_pct)}%</strong></p><p>Volume above average <strong>${esc(s.volume_multiple)}×</strong></p></div>
+    <p class="coverage">Monitoring ${s.enabled?'enabled':'disabled'} · ${s.categories.map(c=>esc(data.categories[c])).join(', ')}</p></details>`;
   return `<details class="panel alert-rules" id="alert-rules"><summary>Alert rules ${icon('down',16)}</summary>
     <form id="alert-rule-form">
       <label class="check"><input type="checkbox" name="enabled" ${s.enabled?'checked':''}> Monitor this demo portfolio</label>
@@ -64,12 +68,12 @@ function settingsForm(data) {
     </form></details>`;
 }
 
-function notifications(data) {
+function notifications(data, readOnly = false) {
   const unread=data.alerts.filter(a=>!a.seen).length;
   if (!data.alerts.length) return '';
   return `<details class="panel notifications" id="alert-history"><summary>Alert history <b>${unread} unread</b> ${icon('down',16)}</summary>
     <p class="panel-intro">Generated under your saved rules. Event times appear with each alert.</p>
-    <button type="button" class="text-button" id="alerts-read">Mark all read</button>
+    ${readOnly ? '' : '<button type="button" class="text-button" id="alerts-read">Mark all read</button>'}
     ${data.alerts.map(a=>`<article class="notification ${a.seen?'':'unread'}"><div class="meta">${esc(a.symbol)} · ${esc(when(a.event_at))}</div><h3>${esc(a.title)}</h3><p>${esc(a.reason)}</p>
     ${sourceButton(a.source,'View source')} <a class="text-button" href="${route('people',{symbol:a.symbol})}">People ${icon('people',15)}</a></article>`).join('')}
     </details>`;
@@ -95,7 +99,7 @@ function liveRow(row) {
     <a class="text-button" href="${route('people',{symbol:row.symbol})}">Connections ${icon('people',15)}</a></article>`;
 }
 
-export function liveBriefView(data, params, customOpen) {
+export function liveBriefView(data, params, customOpen, {readOnly = false} = {}) {
   const active=data.rows.filter(row=>row.priority!=='Routine');
   const routine=data.rows.filter(row=>row.priority==='Routine');
   const lead=active[0];
@@ -109,8 +113,8 @@ export function liveBriefView(data, params, customOpen) {
     <p class="panel-intro">Experience recorded in your fictional network.</p>${data.people.map(personCard).join('')}</aside>`:'';
   return heading('Portfolio monitoring · '+dateLabel(data.as_of),'Portfolio brief','',
     `<a class="holdings-link" href="#portfolio">${icon('layers')} ${data.holdings} holdings</a>`)+
-    `<div class="mode-actions">${modeSwitch('live')}<button id="live-refresh" aria-label="Refresh sources" class="button secondary" type="button" ${running?'disabled':''}>${running?'Refreshing…':'Refresh'}</button></div>
-    <p class="live-status" id="live-status" role="status">${running?'Fetching public filings and completed daily bars…':data.job?.finished?'Last refresh finished '+when(data.job.finished):'Automatic refresh starts when FINN opens.'}</p>
+    `<div class="mode-actions">${modeSwitch('live')}${readOnly ? '<span class="meta">Read only</span>' : `<button id="live-refresh" aria-label="Refresh sources" class="button secondary" type="button" ${running?'disabled':''}>${running?'Refreshing…':'Refresh'}</button>`}</div>
+    <p class="live-status" id="live-status" role="status">${readOnly ? 'Live acquisition is paused in this public demo. Open Historical replay for the prepared investor journey.' : running?'Fetching public filings and completed daily bars…':data.job?.finished?'Last refresh finished '+when(data.job.finished):'Automatic refresh starts when FINN opens.'}</p>
     ${data.alerts.length ? `<button type="button" class="text-button alert-jump" id="show-alerts">${unread} unread alerts ${icon('arrow',15)}</button>` : ''}
     ${feedStatus(data)}${windowControls(data,params,customOpen)}
     ${feature}${!data.rows.length?empty('No cached filings in this window','Check source status above, refresh, or choose a wider window. Historical replay is available from the selector.') : ''}
@@ -119,5 +123,5 @@ export function liveBriefView(data, params, customOpen) {
       ${active.slice(1).map(liveRow).join('')}
       ${routine.length?`<details class="routine"><summary>Routine disclosures <b>${routine.length}</b> ${icon('down',15)}</summary>${routine.map(liveRow).join('')}</details>`:''}
       <p class="coverage">Publication times in IST. Last 24 hours is a rolling window.</p></section>${network}</div>
-    ${notifications(data)}${settingsForm(data)}${market(data)}`;
+    ${notifications(data,readOnly)}${settingsForm(data,readOnly)}${market(data)}`;
 }

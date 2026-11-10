@@ -4,11 +4,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from . import analysis, desk, discovery, documents, live, live_store, llm
+from . import analysis, desk, discovery, documents, live, live_store, llm, runtime
 
 WEB = Path(__file__).parent / "assets"
 
@@ -17,16 +17,26 @@ WEB = Path(__file__).parent / "assets"
 async def lifespan(application):
     with live_store.connection():
         pass
-    refresher = live.Refresher()
-    refresher.start()
+    refresher = None if runtime.public_demo() else live.Refresher()
+    if refresher:
+        refresher.start()
     try:
         yield
     finally:
-        refresher.stop()
+        if refresher:
+            refresher.stop()
 
 
-app = FastAPI(title="FINN investor desk", version="0.4.0", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(title="FINN investor desk", version="0.5.0", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/assets", StaticFiles(directory=WEB), name="assets")
+
+
+@app.middleware("http")
+async def public_demo_boundary(request, call_next):
+    if runtime.public_demo() and request.method not in {"GET", "HEAD", "OPTIONS"}:
+        return JSONResponse(status_code=403, content={"detail":
+            "This public demo is read-only. Run FINN locally to index documents, change alerts or enable optional AI."})
+    return await call_next(request)
 
 
 @app.get("/", include_in_schema=False)
@@ -36,7 +46,8 @@ def index():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "mode": "live_and_replay", "version": "0.4.0", "llm_enabled": llm.enabled()}
+    return {"status": "ok", "mode": "live_and_replay", "version": "0.5.0", "llm_enabled": llm.enabled(),
+            "public_demo": runtime.public_demo()}
 
 
 @app.get("/api/llm/status")
@@ -50,7 +61,8 @@ def model_configuration():
 @app.get("/api/catalog")
 def catalog():
     return {"as_of": desk.REPLAY_END, "companies": desk.all_companies(),
-            "sample_symbols": [s["symbol"] for s in desk.RESEARCH["snapshots"]]}
+            "sample_symbols": [s["symbol"] for s in desk.RESEARCH["snapshots"]],
+            "runtime": runtime.capabilities()}
 
 
 @app.get("/api/brief")

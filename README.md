@@ -14,13 +14,14 @@ A mobile-first Indian-equity investor desk. The primary experience uses sourced 
 
 Source search works for any valid NSE ticker whose original documents have been indexed. Deterministic financial/guidance comparisons currently have a curated historical Infosys example; the app does not claim automated financial interpretation for every ticker. Other seeded company snapshots are explicitly historical. Data availability, period and source coverage stay visible.
 
-## Apply the core-first update
+## Apply the review and deployment update
 
-`FINN_M4_Core_First_Optional_AI.zip` applies directly over the dual-provider M3 build, including when the intervening diagnostic/timeout ZIPs were skipped. It includes those transport improvements for the optional feature but requires no model setup. Existing `.env`, source data, saved settings, caches and Git history are retained. No dependency or Dockerfile changed.
+`FINN_M5_Review_and_Deploy_Update.zip` applies directly over the M2 alerts/announcements/report-indexing milestone, M3 or M4. It includes the optional-AI changes and the diagnostic/timeout fixes, so those earlier ZIPs can be skipped. Existing `.env`, source data, saved settings, caches and Git history are retained. No dependency or Dockerfile changed.
 
 Unzip in the repository root. Set or update this entry in your existing `.env`:
 
 ```dotenv
+FINN_PUBLIC_DEMO=0
 FINN_ENABLE_LLM=0
 ```
 
@@ -36,7 +37,26 @@ curl -fsS http://localhost:8090/api/llm/status
 docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m unittest discover -s tests -v
 ```
 
-Health should show `version: 0.4.0` and `llm_enabled: false`. Model status should show `enabled: false`. A fresh clone uses `cp .env.example .env` followed by `docker compose up --build --wait`; the cached-image override is for an image that already exists. Its default tag is `enamholdings-app:latest`, configurable through `FINN_RUNTIME_IMAGE`. Named data volumes persist across restarts; do not use `down -v` to apply updates.
+Health should show `version: 0.5.0`, `public_demo: false` and `llm_enabled: false`. Model status should show `enabled: false`. A fresh clone uses `cp .env.example .env` followed by `docker compose up --build --wait`; the cached-image override is for an image that already exists. Its default tag is `enamholdings-app:latest`, configurable through `FINN_RUNTIME_IMAGE`. Named data volumes persist across restarts; do not use `down -v` to apply updates.
+
+Verify the running app without creating jobs or making model calls:
+
+```bash
+docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.smoke
+```
+
+## Public phone demo and delivery
+
+[DEPLOYMENT.md](docs/DEPLOYMENT.md) explains the Render Free Blueprint in `render.yaml` and a temporary HTTPS option for a running Mac. The public configuration sets `FINN_PUBLIC_DEMO=1`: visitors can inspect the historical brief, evidence, guidance comparison and fictional network. The server rejects writes, disables the refresher and forces AI off even if a key and `FINN_ENABLE_LLM=1` are present. The UI opens the dated seven-day replay and explains the read-only boundary.
+
+This public presentation is distinct from the full local workspace, where document discovery, live refresh and alert controls remain available. A free hosted instance can sleep and lose its local filesystem; the built-in historical source set survives because it ships with the code. No real contact data, local database or model credentials belong in the public deployment.
+
+The repository also includes:
+
+- [Architecture and privacy decisions](docs/ARCHITECTURE.md), including changes from the initial plan and deployment limitations.
+- [Requirement coverage and final acceptance checks](docs/RELEASE_CHECKLIST.md), with operator checks still marked pending.
+- [Covering-email draft](docs/SUBMISSION_EMAIL.md), with link placeholders to complete before sending.
+- `.github/workflows/ci.yml`, which builds the actual Docker image, runs tests and checks both local and public modes without real model requests. The workflow has not run on GitHub until the changes are pushed.
 
 ## Review the main experience
 
@@ -201,7 +221,7 @@ The default tests make zero external model calls. They exercise controlled model
 
 This is a single synthetic workspace on a local server. It has same-origin mutation checks, not investor authentication or tenant isolation. Public document text goes only to the selected provider on an explicit analysis request. OpenAI requests set `store: false`, which does not promise zero provider retention; see [OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data). Gemini Free-tier content may be used to improve Google products; see [Gemini terms](https://ai.google.dev/gemini-api/terms). Only public issuer evidence is sent; real personal-network data are not part of this prototype. SQLite data/results persist until the operator removes or replaces them; automated retention/deletion and access controls are future deployment work. Do not expose this prototype publicly with a funded key. Production design needs authentication, per-investor authorization, spend limits, encrypted secret storage, consent and deletion controls before real network/contact data are introduced.
 
-Subsequent work includes a hosted authenticated demo, a final architecture/tradeoff writeup and the submission package. Preserve genuine build sessions throughout.
+The current public demo is intentionally anonymous and read-only; authentication and private multi-user workspaces remain future work. Before submission, publish and test the actual public URL, run the clean-clone and live-source checks, complete the link placeholders and preserve genuine build sessions. See the release checklist for the remaining evidence.
 
 Preserve the actual coding-agent and ChatGPT session exports/share links for ENAM's AI build-history requirement. Keep credentials and real contact data out of the public repository and those exports.
 
