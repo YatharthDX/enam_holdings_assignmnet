@@ -10,7 +10,7 @@ docker compose up --build --wait
 curl -fsS http://localhost:8090/health
 ```
 
-Expect version `0.6.1`, `public_demo:false`, `llm_enabled:false`. Existing M5 users should preserve their `.env` and use [the upgrade steps](docs/UPGRADE_M6.md), including the existing-image override.
+Expect version `0.6.2`, `public_demo:false`, `llm_enabled:false`. Existing M5 users should preserve their `.env` and use [the upgrade steps](docs/UPGRADE_M6.md), including the existing-image override.
 
 Open http://localhost:8090. Anonymous visitors can inspect the supplied evidence/network; **Open my workspace** creates an isolated 24-hour demo workspace without email or keys. Export useful notes/facts before expiry. This is browser-possession access, not a verified investor account.
 
@@ -44,7 +44,7 @@ Ticker acceptance explicitly starts public document acquisition. Pick a document
 
 ## Public demo and optional model
 
-The provided Render configuration opens an anonymous historical preview and allows isolated synthetic workspaces, bounded discovery/refresh and private controls. AI and scheduled acquisition are forced off. Free-host state may disappear; the dated source seeds remain. A strictly read-only public setting is also available. See [DEPLOYMENT.md](docs/DEPLOYMENT.md).
+The provided Render configuration opens an anonymous historical preview and allows isolated synthetic workspaces, bounded discovery/refresh and private controls. Scheduled acquisition stays off. The Render preset opts into bounded, free-only OpenRouter synthesis once a server-side key is configured; core workflows still need no key. See [Render AI setup](docs/UPGRADE_RENDER_AI.md). Free-host state may disappear; the dated source seeds remain. A strictly read-only public setting is also available. See [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 Local optional AI synthesis is collapsed and off by default. OpenRouter is the default provider: set `FINN_ENABLE_LLM=1`, `FINN_LLM_PROVIDER=openrouter`, `OPENROUTER_API_KEY` and `FINN_OPENROUTER_MODEL=openrouter/free` in the ignored `.env`, then recreate the container. Existing explicit Gemini/OpenAI selections must be changed in `.env`; they remain supported as alternatives. Explicitly press Analyze; no generation occurs merely by opening the section. A provider error does not obstruct the main workflows. No automatic paid fallback exists.
 

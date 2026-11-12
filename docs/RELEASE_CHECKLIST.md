@@ -36,7 +36,7 @@ Docker is not installed in the build environment. No authenticated GitHub/Render
 
 ## Operator acceptance — record commit, date and observed result
 
-- [ ] Apply the M6.1 overlay, preserve the named volume and existing `.env`, set local flags/AI off, recreate Docker and confirm `0.6.1`.
+- [ ] Apply the M6.1 overlay, preserve the named volume and existing `.env`, set local flags/AI off, recreate Docker and confirm `0.6.2`.
 - [ ] Run the actual container suite, `python -m finn.smoke` and `python -m finn.acceptance --sessions-only`; save actual output.
 - [ ] Open the first normal local workspace. Verify adopted M5 preferences/read alerts if present. Export useful work before its 24-hour expiry.
 - [ ] In a separate clean checkout/project/volume, build and inspect the same workflows. Preserve the working repo/data; do not reset its volume.

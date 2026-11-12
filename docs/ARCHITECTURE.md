@@ -95,7 +95,7 @@ Local explicit opt-in defaults to OpenRouter and also supports Gemini/OpenAI thr
 
 Caches separate provider/model/lens/document/prompt identities. Ownership renewal protects long calls; at most two generation jobs run. Tokens, latency and available estimates are recorded. No automatic retry or provider fallback is made. Metadata diagnostics are GET-only; live inference/cost has not been validated in this release build.
 
-No free-running agent searches, plans external actions, contacts people or places trades. Scheduled ingestion is ordinary application code. Public deployments force models and the acquisition scheduler off even if their environment flags/keys are present.
+No free-running agent searches, plans external actions, contacts people or places trades. Scheduled ingestion is ordinary application code. Public deployments keep the acquisition scheduler off. Optional public AI requires both enable flags, interactive workspaces and an explicit OpenRouter selection. Other transports are blocked publicly. Research-job creation atomically reserves an anonymous SQLite quota entry: 3 new starts/workspace/hour, 5 globally/hour, 15 globally/24 hours, one concurrent job. Shared cached results bypass these counters; failures consume an attempt. Deleting a workspace does not erase global counters. The counters reset when an ephemeral host loses its SQLite file; these are prototype controls, not distributed abuse protection.
 
 ## Deployment and verification
 

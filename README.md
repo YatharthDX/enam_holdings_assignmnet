@@ -44,7 +44,7 @@ docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.
 docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.acceptance --sessions-only
 ```
 
-Health should show `version: 0.6.1`, `public_demo: false` and `llm_enabled: false`. Open http://localhost:8090 and select **Open my workspace**. Until then the browser sees public evidence and fictional seeds.
+Health should show `version: 0.6.2`, `public_demo: false` and `llm_enabled: false`. Open http://localhost:8090 and select **Open my workspace**. Until then the browser sees public evidence and fictional seeds.
 
 The **first normal local workspace** adopts M5 alert preferences and alert read/history state once. Disposable acceptance sessions skip that adoption. Source indexes, public model-result caches and market/filing records remain shared and are not removed by the upgrade. Private workspace data now expire after 24 hours as specified in the design plan. Export before expiry using **Workspace → Export workspace**. The export is a readable snapshot; network profiles/edges can be re-imported, but there is no one-click restore of notes, facts or alerts.
 
@@ -112,7 +112,7 @@ PDF limits are 50 MiB/800 pages locally and 20 MiB/600 pages in public mode. Enc
 | Mode | Settings | Behavior |
 | --- | --- | --- |
 | Local | `FINN_PUBLIC_DEMO=0` | Isolated browser workspaces, source acquisition, private controls; optional model feature can be enabled |
-| Public interactive | `FINN_PUBLIC_DEMO=1`, `FINN_INTERACTIVE_DEMO=1` | Anonymous evidence preview plus isolated 24-hour synthetic workspaces; bounded manual discovery/refresh; models and scheduled acquisition forced off |
+| Public interactive | `FINN_PUBLIC_DEMO=1`, `FINN_INTERACTIVE_DEMO=1` | Anonymous evidence preview plus isolated 24-hour synthetic workspaces; bounded manual discovery/refresh; scheduled acquisition off; optional free-only OpenRouter with explicit public opt-in |
 | Public read-only | `FINN_PUBLIC_DEMO=1`, `FINN_INTERACTIVE_DEMO=0` | Historical/source preview; every non-read HTTP method rejected |
 
 The supplied Render Blueprint selects public interactive mode. It is not the M5 read-only-only presentation. Document starts are capped at five per workspace/hour and 20 globally/hour, with one public indexing worker. Manual live refresh is capped globally at one per 15 minutes. Existing evidence remains available when caps are reached. Maximum active workspaces: 100; source acquisition union: 100 tickers.
@@ -165,7 +165,7 @@ An existing explicit `FINN_LLM_PROVIDER=gemini` or `openai` remains effective un
 
 Gemini and OpenAI remain available by setting `FINN_LLM_PROVIDER=gemini` / `openai`, their corresponding API key and optional model override. `auto` selects the first configured key in this order: OpenRouter, Gemini, OpenAI. With no keys, it shows the unconfigured OpenRouter option. Selection is frozen when a job starts; no runtime provider fallback or automatic retry occurs. Key presence alone never enables generation, and expanding the section does not generate.
 
-Only up to 18 public source passages/36,000 characters enter a request, across at most five originals. Private contact names, notes, holdings and reviewed facts are excluded. Source-span/page/number checks establish traceability, not semantic entailment. OpenRouter and its selected downstream provider process those public passages under their respective policies. As-of research disables synthesis. Public demo mode always forces all model transports off.
+Only up to 18 public source passages/36,000 characters enter a request, across at most five originals. Private contact names, notes, holdings and reviewed facts are excluded. Source-span/page/number checks establish traceability, not semantic entailment. OpenRouter and its selected downstream provider process those public passages under their respective policies. As-of research disables synthesis. Public AI additionally requires `FINN_PUBLIC_LLM=1` and an explicit `FINN_LLM_PROVIDER=openrouter`. Only the free-only adapter is permitted. See [Render AI setup](docs/UPGRADE_RENDER_AI.md).
 
 OpenRouter uses non-streaming Chat Completions with a strict JSON schema and an 8,192-token output cap. Reasoning text is discarded; visible content is normalized into the shared verifier. Refusals, truncation, tool calls, malformed output and error envelopes are not published. Provider/model/lens/document/prompt identities separate result caches; a changed provider does not erase old results. The free router's cache uses its requested route identity while the served model is recorded in usage.
 

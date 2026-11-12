@@ -1,4 +1,4 @@
-import {esc, dateLabel, route, sourceButton, empty} from './ui.js?v=0.6.1';
+import {esc, dateLabel, route, sourceButton, empty} from './ui.js?v=0.6.2';
 
 const option=(value,label,selected)=>`<option value="${esc(value)}" ${value===selected?'selected':''}>${esc(label)}</option>`;
 const label=value=>value.replaceAll('_',' ');

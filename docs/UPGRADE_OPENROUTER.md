@@ -24,7 +24,7 @@ Keep the rest of your settings. Existing Gemini/OpenAI keys may remain private; 
 
 `openrouter/free` dynamically picks an available compatible free model. You can pin an available `author/model:free` ID for repeatable evaluation. FINN rejects paid OpenRouter IDs, requires JSON-schema support, requests zero prompt/completion/request prices and disables provider fallback. Provider quota/capacity can still prevent a free request. Missing cost stays unknown; only a reported zero is displayed as zero.
 
-Core workflows remain key-free. Set `FINN_ENABLE_LLM=0` at any time to disable optional synthesis. Public-demo mode always forces all model providers off, so local synthesis needs `FINN_PUBLIC_DEMO=0`.
+Core workflows remain key-free. Set `FINN_ENABLE_LLM=0` at any time to disable optional synthesis. Local synthesis uses `FINN_PUBLIC_DEMO=0`. Public synthesis is separately opt-in and restricted to free OpenRouter; see [Render AI setup](UPGRADE_RENDER_AI.md).
 
 ## 3. Recreate the container with the cached image
 
@@ -36,7 +36,7 @@ curl -fsS http://localhost:8090/api/llm/status
 docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.diagnose
 ```
 
-Expect release `0.6.1`; when configured as above, AI status shows `provider: openrouter`, `model: openrouter/free`, `configured: true`. These flags indicate configuration, not a successful inference.
+Expect release `0.6.2`; when configured as above, AI status shows `provider: openrouter`, `model: openrouter/free`, `configured: true`. These flags indicate configuration, not a successful inference.
 
 The diagnostic makes a read-only authenticated key-metadata GET, not a generation. `KEY_ACCESS_OK` verifies that check only. `python -m finn.diagnose --models` lists bounded catalog IDs that are free and advertise schema support; it does not prove endpoint capacity or exact-schema acceptance.
 

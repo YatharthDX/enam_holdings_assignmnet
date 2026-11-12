@@ -37,7 +37,7 @@ async def lifespan(application):
             refresher.stop()
 
 
-app = FastAPI(title="FINN investor desk", version="0.6.1", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(title="FINN investor desk", version="0.6.2", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/assets", StaticFiles(directory=WEB), name="assets")
 
 
@@ -92,7 +92,7 @@ def index():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "mode": "live_and_replay", "version": "0.6.1", "llm_enabled": llm.enabled(),
+    return {"status": "ok", "mode": "live_and_replay", "version": "0.6.2", "llm_enabled": llm.enabled(),
             "public_demo": runtime.public_demo(), "interactive_demo": runtime.interactive()}
 
 
@@ -344,7 +344,8 @@ def analyze_documents(symbol: str, value: AnalysisRequest, request: Request, tas
     try:
         result, work = analysis.begin(symbol, value.lens)
     except ValueError as exc:
-        raise HTTPException(422, str(exc)) from exc
+        status = 429 if getattr(exc, "code", "") in {"PUBLIC_AI_LIMIT", "PUBLIC_AI_BUSY"} else 422
+        raise HTTPException(status, str(exc)) from exc
     if work:
         tasks.add_task(analysis.run, *work)
     return result

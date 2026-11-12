@@ -1,8 +1,8 @@
-import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js?v=0.6.1';
-import {modeSwitch, windowControls} from './live-view.js?v=0.6.1';
-import {analysisView} from './analysis-view.js?v=0.6.1';
-import {sourceBrief, dateFilter, reviewedResearch} from './research-view.js?v=0.6.1';
-import {identityForm, reconnectCards} from './network-view.js?v=0.6.1';
+import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js?v=0.6.2';
+import {modeSwitch, windowControls} from './live-view.js?v=0.6.2';
+import {analysisView} from './analysis-view.js?v=0.6.2';
+import {sourceBrief, dateFilter, reviewedResearch} from './research-view.js?v=0.6.2';
+import {identityForm, reconnectCards} from './network-view.js?v=0.6.2';
 
 function rangeChart(series) {
   const forecasts = series.forecasts;

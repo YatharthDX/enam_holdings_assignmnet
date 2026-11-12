@@ -136,8 +136,16 @@ def key(provider):
 
 
 def enabled():
-    from .runtime import public_demo
-    return not public_demo() and os.environ.get("FINN_ENABLE_LLM", "0").strip().lower() in {"1", "true", "yes", "on"}
+    from .runtime import interactive, public_demo
+    flags = {"1", "true", "yes", "on"}
+    if os.environ.get("FINN_ENABLE_LLM", "0").strip().lower() not in flags:
+        return False
+    if not public_demo():
+        return True
+    # Public generation is a separate opt-in, restricted to the free-only adapter.
+    return (interactive() and
+            os.environ.get("FINN_PUBLIC_LLM", "0").strip().lower() in flags and
+            os.environ.get("FINN_LLM_PROVIDER", DEFAULT_PROVIDER).strip().lower() == "openrouter")
 
 
 def provider():
@@ -210,7 +218,7 @@ def request_json(endpoint, payload, headers, selected, timeout=None):
         timeout = timeout_seconds() if payload is not None else 15
     request = Request(endpoint, data=json.dumps(payload).encode() if payload is not None else None,
                       method="POST" if payload is not None else "GET", headers={
-        "Content-Type": "application/json", "User-Agent": "FINN/0.6.1", **headers})
+        "Content-Type": "application/json", "User-Agent": "FINN/0.6.2", **headers})
     try:
         with build_opener(NoRedirect()).open(request, timeout=timeout) as response:
             raw = response.read(MAX_RESPONSE_BYTES + 1)
@@ -317,6 +325,9 @@ def normalize_openrouter(body):
 def generate(selected, selected_model, instructions, evidence, schema):
     if not enabled():
         raise ProviderError("Optional AI synthesis is disabled. Set FINN_ENABLE_LLM=1 to enable it.")
+    from .runtime import public_demo
+    if public_demo() and selected != "openrouter":
+        raise ProviderError("Public AI synthesis permits free-only OpenRouter requests only.")
     if selected not in KEY_ENV or not key(selected):
         raise ProviderError("Configure the selected provider's server-side API key before analysis.")
     # selected_model comes from validated configuration frozen when the job began.

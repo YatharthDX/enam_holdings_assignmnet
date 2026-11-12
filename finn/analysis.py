@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal
 
-from . import desk, documents, live_store, llm
+from . import desk, documents, live_store, llm, public_ai, runtime, workspaces
 
 VERSION = "research-1"
 DEFAULT_MODEL = llm.OPENAI_MODEL
@@ -195,6 +195,7 @@ def prepare(db):
     # Serialize the additive migration when two first requests arrive together.
     db.execute("BEGIN IMMEDIATE")
     db.execute(SCHEMA)
+    public_ai.prepare(db)
     if "provider" not in {r["name"] for r in db.execute("PRAGMA table_info(research_runs)")}:
         db.execute("ALTER TABLE research_runs ADD COLUMN provider TEXT NOT NULL DEFAULT 'openai'")
     db.commit()
@@ -265,6 +266,8 @@ def status(symbol, mode="business"):
         prepare(db)
         row = db.execute("SELECT * FROM research_runs WHERE cache_key=?", (key,)).fetchone()
     return {**llm.public_config(), "model": selected_model, "lens": mode,
+            "public_demo": runtime.public_demo(),
+            "public_limits": public_ai.LIMITS if runtime.public_demo() else None,
             "lenses": [{"id": k, "title": v["title"]} for k, v in MODES.items()],
             "coverage": data["coverage"], "job": public_job(row)}
 
@@ -272,6 +275,8 @@ def status(symbol, mode="business"):
 def begin(symbol, mode):
     if not llm.enabled():
         raise AnalysisError("Optional AI synthesis is disabled. Set FINN_ENABLE_LLM=1 to enable it.")
+    if runtime.public_demo() and not workspaces.private():
+        raise AnalysisError("Open your own workspace before requesting optional AI synthesis.")
     symbol, mode = documents.ticker(symbol), lens(mode)
     data, selected_model, key = context(symbol, mode)
     token, started = uuid.uuid4().hex, now()
@@ -284,13 +289,17 @@ def begin(symbol, mode):
         if row and row["status"] == "running" and row["expires"] > stamp(started):
             return {"cached": False, "status": "running"}, None
         if not configured():
-            raise AnalysisError("Add " + llm.KEY_ENV[data["_provider"]] + " to your local .env and restart FINN to enable analysis.")
+            raise AnalysisError("Configure " + llm.KEY_ENV[data["_provider"]] + " in the server environment and redeploy FINN to enable analysis.")
         if not data["passages"]:
             raise AnalysisError("Find primary documents for this ticker before generating analysis.")
         active = db.execute("SELECT COUNT(*) FROM research_runs WHERE status='running' AND expires>?",
                             (stamp(started),)).fetchone()[0]
-        if active >= 2:
+        if runtime.public_demo() and active >= public_ai.LIMITS["concurrent"]:
+            raise AnalysisError("One public AI request is already running. Wait for it to finish; saved readings remain available.", "PUBLIC_AI_BUSY")
+        if not runtime.public_demo() and active >= 2:
             raise AnalysisError("Two research jobs are already running. Wait for one to finish.")
+        if runtime.public_demo():
+            public_ai.reserve(db, started.timestamp())
         db.execute("""INSERT INTO research_runs (cache_key,symbol,lens,token,status,started,finished,expires,detail,result,usage,model,provider)
             VALUES(?,?,?,?,?,?,NULL,?,?,NULL,NULL,?,?)
             ON CONFLICT(cache_key) DO UPDATE SET token=excluded.token,status=excluded.status,

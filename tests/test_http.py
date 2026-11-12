@@ -58,6 +58,32 @@ class HttpTests(unittest.TestCase):
         for file in ["app.js", "views.js", "analysis-view.js", "ui.js", "desk.css", "icon.svg"]:
             self.assertTrue(self.read("/assets/" + file))
 
+    def test_public_ai_optin_keeps_workspace_origin_and_quota_checks(self):
+        from finn import analysis, llm
+        with patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "1", "FINN_INTERACTIVE_DEMO": "1",
+                                    "FINN_ENABLE_LLM": "1", "FINN_PUBLIC_LLM": "1",
+                                    "FINN_LLM_PROVIDER": "openrouter", "FINN_OPENROUTER_MODEL": "openrouter/free"}):
+            self.assertTrue(json.loads(self.read("/health"))["llm_enabled"])
+            self.assertEqual(json.loads(self.read("/api/llm/status"))["provider"], "openrouter")
+            self.assertEqual(len(smoke.run(self.base, expect_public_demo=True)), 9)
+            body = b'{"lens":"business"}'
+            route = self.base + "/api/research/INFY/analyze"
+            with patch.object(analysis, "begin", side_effect=llm.ProviderError("Demo allowance used", "PUBLIC_AI_LIMIT")) as begin:
+                with self.assertRaises(HTTPError) as denied:
+                    urlopen = build_opener(ProxyHandler({}))
+                    urlopen.open(Request(route, data=body, headers={"Content-Type":"application/json"}))
+                self.assertEqual(denied.exception.code, 401)
+                begin.assert_not_called()
+                with self.assertRaises(HTTPError) as wrong_origin:
+                    self.client.open(Request(route, data=body, headers={"Content-Type":"application/json",
+                                                                      "Origin":"https://unrelated.example"}))
+                self.assertEqual(wrong_origin.exception.code, 403)
+                begin.assert_not_called()
+                with self.assertRaises(HTTPError) as limited:
+                    self.client.open(Request(route, data=body, headers={"Content-Type":"application/json"}))
+                self.assertEqual(limited.exception.code, 429)
+                self.assertEqual(begin.call_count, 1)
+
     def test_normal_entry_points(self):
         self.assertEqual(len(json.loads(self.read("/api/catalog"))["companies"]), 19)
         self.assertEqual(json.loads(self.read("/api/brief"))["focus"], "INFY")

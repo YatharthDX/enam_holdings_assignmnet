@@ -35,7 +35,7 @@ def run(base_url="http://127.0.0.1:8080", *, expect_public_demo=False, timeout=1
 
     checks = []
     health = read("/health")
-    require(health.get("status") == "ok" and health.get("version") == "0.6.1", "Expected a healthy FINN 0.6.1 service.")
+    require(health.get("status") == "ok" and health.get("version") == "0.6.2", "Expected a healthy FINN 0.6.2 service.")
     checks.append("Health and release version")
     require(b"/assets/app.js" in read("/", html=True), "The application shell is unavailable.")
     checks.append("Browser application shell")
@@ -67,8 +67,11 @@ def run(base_url="http://127.0.0.1:8080", *, expect_public_demo=False, timeout=1
     if expect_public_demo:
         require(health.get("public_demo") is True and catalog.get("runtime", {}).get("read_only") is True,
                 "The deployment is not configured for public mode with anonymous read-only access.")
-        require(health["llm_enabled"] is False and model["enabled"] is False, "Public demo AI must remain disabled.")
-        checks.append("Public demo capabilities and disabled AI")
+        require(health["llm_enabled"] is model["enabled"], "AI capability reports disagree.")
+        if model["enabled"]:
+            require(model.get("provider") == "openrouter" and model.get("free_only") is True,
+                    "Public demo AI must use free-only OpenRouter.")
+        checks.append("Public demo capabilities and free-only AI policy")
     return checks
 
 
