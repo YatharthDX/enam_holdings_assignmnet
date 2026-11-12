@@ -60,7 +60,8 @@ class PipelineCompletionTests(unittest.TestCase):
         filing=providers.normal_filing('INFY','Financial results','Results','https://nsearchives.nseindia.com/result.pdf','2026-11-10T10:00:00Z')
         def upstream(*args):return {'rows':[filing],'warning':'','skipped':0,'url':providers.NSE_PAGE,'coverage':'range'}
         def prices(symbol,now):return [{'symbol':symbol,'day':'2026-11-09','close':100,'volume':100,'split':False}]
-        def finish(symbol,token):
+        def finish(symbol,token,**kwargs):
+            self.assertTrue(kwargs.get('force'))
             with store.connection() as db:db.execute("UPDATE document_jobs SET status='complete' WHERE symbol=? AND token=?",(symbol,token))
         with patch('finn.discovery.run',side_effect=finish) as run:
             live.refresh(now,filing_fetch=upstream,price_fetch=prices,force_prices=True)

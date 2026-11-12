@@ -24,7 +24,7 @@ This intentionally replaces the initial React/TypeScript, PostgreSQL and cloud-o
 | `workspaces.py` | Session signatures, owner context, settings/holdings/alert state, migration, export/delete, expiry and public source quotas |
 | `providers.py` | Public NSE JSON/RSS/CSV and completed Yahoo daily-bar normalization |
 | `live.py`, `live_store.py` | Source/job state, metadata ranking/grouping, alerts, scheduled refresh and tracked-document queue |
-| `discovery.py`, `documents.py` | Verified ticker link discovery, bounded downloads, lease ownership, hash/parser cache, transactional pages and retained originals |
+| `discovery.py`, `documents.py` | Verified ticker link discovery, bounded downloads, lease ownership, native process extraction, timed cancellation, six-hour source cache, transactional pages and retained originals |
 | `research.py` | Exact topic passages, unaccepted candidate suggestions, reviewed fact validation, compatible comparisons and financial deltas |
 | `network.py` | Owned profiles/dated employment/notes, explicit paths, relevance, identity corroboration and reconnect reasons |
 | `desk.py`, `data/` | Dated historical benchmark and synthetic demo seeds |
@@ -104,3 +104,12 @@ The Render Free Blueprint enables bounded interactive synthetic workspaces. Anon
 `FINN_TRUST_PROXY=1` trusts forwarded HTTPS only behind a known edge (the supplied Render configuration). Direct local mode uses 0. Validate the actual host's cookie/origin behavior after deployment.
 
 Tests use real loopback HTTP routes and controlled external responses. They test two-browser isolation, expiry/withdrawal, cold-ticker indexing/review, source revisions, arithmetic, thresholds, model boundaries and failure recovery. Browser checks cover the new controls at 360/390/430 px. Docker/GitHub CI, actual deployment, live independent-ticker access, source reconciliation and second-person phone timing remain operator checks. See [PLAN_AUDIT.md](PLAN_AUDIT.md) and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+
+
+## PDF extraction and indexing latency (M6.4)
+
+Text extraction uses pinned pypdfium2/PDFium in a disposable subprocess; pypdf is retained for PDF metadata/encryption checks and test fixtures. PDFium is not thread-safe, so concurrent document callers never share its process. The worker closes each page/text handle, emits bounded progress, receives no provider credentials, and is terminated on the parsing deadline. This is process lifecycle isolation, not a complete OS sandbox. The exact immutable bytes used for the SHA-256 revision are parsed and retained; replacing an operator input file mid-run cannot mismatch evidence and source. A document commits all accepted pages atomically, preserving the prior revision on failure.
+
+The six-hour source cache is keyed by exact URL, symbol, kind, title, publication date and parser version; it records the last byte check separately from the issuer publication date. Each Find request still checks the link listing for new documents. Explicit Refresh sources and relevant filing revisions bypass the cache. The cache and anonymous quotas remain on the ephemeral demo filesystem. No automatic retries, model calls, paid infrastructure or extra public indexing concurrency were added.
+
+References: [PDFium threading and handle lifecycle](https://pypdfium2.readthedocs.io/en/stable/python_api.html), [distribution and licensing](https://pypdfium2.readthedocs.io/en/stable/readme.html).

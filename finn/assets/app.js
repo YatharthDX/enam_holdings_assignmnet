@@ -1,8 +1,8 @@
-import {clearRecords, esc, nav, openSheet, route, getRecord, setWorkspaceAccess} from './ui.js?v=0.6.3';
-import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.6.3';
-import {liveBriefView} from './live-view.js?v=0.6.3';
-import {workspaceNotice, workspaceView} from './workspace-view.js?v=0.6.3';
-import {identityResult} from './network-view.js?v=0.6.3';
+import {clearRecords, esc, nav, openSheet, route, getRecord, setWorkspaceAccess} from './ui.js?v=0.6.4';
+import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.6.4';
+import {liveBriefView} from './live-view.js?v=0.6.4';
+import {workspaceNotice, workspaceView} from './workspace-view.js?v=0.6.4';
+import {identityResult} from './network-view.js?v=0.6.4';
 
 const workspace = document.querySelector('#workspace');
 const sheet = document.querySelector('#sheet');
@@ -28,7 +28,9 @@ function scheduleResearchPoll() {
   clearTimeout(pollTimer);
   if (activeResearch?.discovery?.status !== 'running' && activeResearch?.analysis?.job?.status !== 'running') return;
   const symbol = activeResearch.company.symbol;
-  const previous = JSON.stringify([activeResearch.discovery, activeResearch.analysis?.job]);
+  const evidenceState = job => JSON.stringify([job?.status, job?.sources?.filter(s=>s.index_status==='indexed').map(s=>[s.url,s.pages,s.cached])]);
+  const previous = evidenceState(activeResearch.discovery);
+  const previousAnalysis = JSON.stringify(activeResearch.analysis?.job);
   const lens = activeResearch.analysis?.lens || 'business';
   pollTimer = setTimeout(async () => {
     const {view, params} = locationState();
@@ -40,12 +42,24 @@ function scheduleResearchPoll() {
           api('research/' + encodeURIComponent(symbol) + '/analysis',{lens}).catch(() => ({job:activeResearch.analysis?.job || null})) :
           Promise.resolve({job:activeResearch.analysis?.job || null})
       ]);
-      if (JSON.stringify([docs.job, analysis.job]) !== previous && !userIsReading() &&
+      const changed = evidenceState(docs.job) !== previous || JSON.stringify(analysis.job) !== previousAnalysis;
+      const status = document.querySelector('#discovery-status');
+      if (status && docs.job) status.textContent = docs.job.detail;
+      const progress = document.querySelector('#indexing-progress');
+      const source = docs.job?.sources?.find(s=>s.index_status==='extracting');
+      if (progress) {
+        progress.hidden = !source?.total_pages;
+        if (source?.total_pages) {progress.max=source.total_pages;progress.value=source.processed_pages||0;}
+      }
+      if (changed && !userIsReading() &&
           !document.querySelector('.analysis-method[open]')) {
         catalog = null;
         await render();
         return;
       }
+      // Page progress must not rerun full-corpus retrieval every four seconds.
+      // Keep a completed update pending while the user is typing/inspecting evidence.
+      if (!changed) activeResearch.discovery = docs.job;
     } catch {
       const status = document.querySelector('#discovery-status');
       if (status) status.textContent = 'Connection interrupted. Existing indexed sources remain available.';
@@ -214,13 +228,14 @@ document.addEventListener('click',event=>{
     }
     return;
   }
-  if (target.id === 'discover-documents') {
-    target.disabled = true;
+  if (target.id === 'discover-documents' || target.id === 'refresh-documents') {
+    const buttons = document.querySelectorAll('#discover-documents,#refresh-documents');
+    buttons.forEach(button=>button.disabled=true);
     const symbol = activeResearch.company.symbol;
-    api('research/' + encodeURIComponent(symbol) + '/discover', {}, {method:'POST'})
+    api('research/' + encodeURIComponent(symbol) + '/discover', target.id==='refresh-documents'?{force:'true'}:{}, {method:'POST'})
       .then(() => render())
       .catch(error => {
-        target.disabled = false;
+        buttons.forEach(button=>button.disabled=false);
         const status = document.querySelector('#discovery-status');
         if (status) status.textContent = error.message;
       });

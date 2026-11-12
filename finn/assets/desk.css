@@ -1565,6 +1565,18 @@ blockquote {
   color: var(--muted);
   font-size: 13px;
 }
+.discovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.indexing-progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--green);
+}
+.indexing-progress[hidden] { display: none; }
 .discovery-panel .discovery-status,
 .discovery-panel .discovered-links {
   flex-basis: 100%;

@@ -1,8 +1,8 @@
-import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js?v=0.6.3';
-import {modeSwitch, windowControls} from './live-view.js?v=0.6.3';
-import {analysisView} from './analysis-view.js?v=0.6.3';
-import {sourceBrief, dateFilter, reviewedResearch} from './research-view.js?v=0.6.3';
-import {identityForm, reconnectCards} from './network-view.js?v=0.6.3';
+import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js?v=0.6.4';
+import {modeSwitch, windowControls} from './live-view.js?v=0.6.4';
+import {analysisView} from './analysis-view.js?v=0.6.4';
+import {sourceBrief, dateFilter, reviewedResearch} from './research-view.js?v=0.6.4';
+import {identityForm, reconnectCards} from './network-view.js?v=0.6.4';
 
 function rangeChart(series) {
   const forecasts = series.forecasts;
@@ -85,12 +85,16 @@ export function researchView(data,catalog,options = {}) {
     ${matches}<details class="routine"><summary>Source documents <b>${data.sources.length}</b> ${icon('down',15)}</summary>${citations}</details></section>`;
   const noDocs = empty('No indexed sources for '+c.symbol,options.readOnly ? 'Index original documents for this ticker in your own local workspace. The public demo includes the prepared historical source set.' : 'Find primary documents for this ticker to build its evidence index.');
   const job = data.discovery;
+  const extracting = job?.sources?.find(s=>s.index_status==='extracting');
   const discovery = options.readOnly || data.as_of ? '' : `<section class="discovery-panel" aria-label="Document discovery">
     <div><strong>Find primary documents</strong><p>Latest annual report and up to four call transcripts.</p></div>
-    <button type="button" id="discover-documents" class="button secondary" ${job?.status==='running'?'disabled':''}>${job?.status==='running'?'Indexing…':'Find documents'} ${icon('book',16)}</button>
+    <div class="discovery-actions"><button type="button" id="discover-documents" class="button secondary" ${job?.status==='running'?'disabled':''}>${job?.status==='running'?'Indexing…':'Find documents'} ${icon('book',16)}</button>
+    <button type="button" id="refresh-documents" class="text-button" ${job?.status==='running'?'disabled':''}>Refresh sources</button></div>
     <p id="discovery-status" class="discovery-status" role="status">${esc(job?.detail || 'Original documents are discovered via Screener’s public links.')}</p>
+    <progress id="indexing-progress" class="indexing-progress" max="${extracting?.total_pages||1}" value="${extracting?.processed_pages||0}" aria-label="PDF pages processed" ${extracting?.total_pages?'':'hidden'}></progress>
+    <p class="discovery-status coverage">Recent indexed documents are reused for up to 6 hours. Refresh sources downloads them again to check for changes.</p>
     ${job?.sources?.length ? `<details class="discovered-links"><summary>Discovered originals · ${job.sources.length}</summary>
-      ${job.sources.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)} ${icon('external',14)}</a><p class="coverage">${s.index_status==='indexed'?s.pages+' pages indexed':s.error?esc(s.error):'Indexing status pending'}</p>`).join('')}</details>` : ''}
+      ${job.sources.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)} ${icon('external',14)}</a><p class="coverage">${s.index_status==='indexed'?s.pages+' text pages indexed'+(s.cached?' · saved index reused':''):s.error?esc(s.error):s.index_status==='extracting'?`Reading page ${s.processed_pages} of ${s.total_pages}`:s.index_status==='downloading'?'Downloading PDF…':'Indexing status pending'}</p>`).join('')}</details>` : ''}
     </section>`;
   const network = `<section class="panel"><div class="section-meta">Network · ${esc(c.symbol)}</div><h2>Who can help?</h2>${data.people.length?data.people.map(personCard).join(''):empty('No recorded connection','Try searching People by industry or area of experience.')}</section>`;
   return heading('Primary-source research','Company research','Inspect company evidence, compare guidance and find relevant contacts.')+

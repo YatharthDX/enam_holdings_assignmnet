@@ -5,6 +5,7 @@ import json
 import socket
 import tempfile
 import threading
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -231,27 +232,44 @@ def keep_lease(symbol, token):
         thread.join(timeout=1)
 
 
-def run(symbol, token, fetch=fetch_public):
+def run(symbol, token, fetch=fetch_public, *, force=False):
     with keep_lease(symbol, token) as owned:
         if owned:
-            _run(symbol, token, fetch)
+            _run(symbol, token, fetch, force=force)
 
 
-def _run(symbol, token, fetch=fetch_public):
-    errors, indexed = [], 0
+def _run(symbol, token, fetch=fetch_public, *, force=False):
+    errors, indexed, reused = [], 0, 0
     candidates = []
+    def publish(detail):
+        with store.connection() as db:
+            changed = db.execute("UPDATE document_jobs SET sources_json=?,detail=?,expires=? "
+                                 "WHERE symbol=? AND token=? AND status='running'",
+                                (json.dumps(candidates), detail[:2400],
+                                 providers.iso(live.clock() + timedelta(minutes=10)), symbol, token)).rowcount
+        if not changed:
+            raise ValueError("This indexing attempt was superseded. Existing evidence remains available.")
     try:
         candidates = discover_links(symbol, fetch)
-        with store.connection() as db:
-            db.execute("UPDATE document_jobs SET sources_json=?, detail=? WHERE symbol=? AND token=?",
-                       (json.dumps(candidates), f"Found {len(candidates)} originals; indexing their pages…",
-                        symbol, token))
-        for candidate in candidates:
+        publish(f"Found {len(candidates)} originals; checking the saved index…")
+        for number, candidate in enumerate(candidates, 1):
+            started = time.monotonic()
+            label = f"Document {number} of {len(candidates)}: {candidate['title']}"
             try:
                 with store.connection() as db:
                     owned = db.execute("SELECT 1 FROM document_jobs WHERE symbol=? AND token=? AND status='running'", (symbol, token)).fetchone()
                 if not owned:
                     return
+                cached = None if force else documents.cached_index(symbol, candidate["kind"], candidate["title"], candidate["url"])
+                if cached:
+                    candidate.update(index_status="indexed", pages=cached["pages"], error=None,
+                                     cached=True, checked_at=cached["checked_at"], elapsed_seconds=0)
+                    reused += 1
+                    indexed += 1
+                    publish(label + " — using saved indexed pages (checked within 6 hours).")
+                    continue
+                candidate.update(index_status="downloading", cached=False)
+                publish(label + " — downloading the original PDF…")
                 body = fetch(candidate["url"])
                 with store.connection() as db:
                     if not db.execute("SELECT 1 FROM document_jobs WHERE symbol=? AND token=? AND status='running'", (symbol,token)).fetchone():
@@ -261,23 +279,26 @@ def _run(symbol, token, fetch=fetch_public):
                 with tempfile.TemporaryDirectory(prefix="finn-doc-") as folder:
                     path = Path(folder) / "primary.pdf"
                     path.write_bytes(body)
+                    def progress(done, total):
+                        candidate.update(index_status="extracting", processed_pages=done, total_pages=total)
+                        publish(label + f" — reading page {done} of {total}…")
                     _, pages, _ = documents.import_pdf(path, symbol, candidate["kind"], candidate["title"],
-                                                      candidate["url"], published="")
-                    candidate.update(index_status="indexed", pages=pages, error=None)
+                                                      candidate["url"], published="", progress=progress)
+                    candidate.update(index_status="indexed", pages=pages, error=None,
+                                     elapsed_seconds=round(time.monotonic() - started, 1))
                 indexed += 1
             except (providers.SourceError, PyPdfError, ValueError, OSError) as exc:
                 errors.append(candidate["title"] + ": " + str(exc))
                 candidate.update(index_status="error", error=str(exc)[:300])
-            with store.connection() as db:
-                db.execute("UPDATE document_jobs SET expires=? WHERE symbol=? AND token=?",
-                           (providers.iso(live.clock() + timedelta(minutes=10)), symbol, token))
-                db.execute("UPDATE document_jobs SET sources_json=? WHERE symbol=? AND token=?", (json.dumps(candidates), symbol, token))
+            publish(label + (" — indexed." if candidate.get("index_status") == "indexed" else " — could not be indexed; continuing."))
     except providers.SourceError as exc:
         errors.append(str(exc))
     except Exception:
         live.LOGGER.exception("Document discovery failed for %s", symbol)
         errors.append("Document indexing was interrupted. Existing sources are still available.")
     detail = f"Indexed {indexed} of {len(candidates)} documents."
+    if reused:
+        detail += f" Reused {reused} recent saved index(es); their PDFs were not downloaded again."
     if errors:
         detail += " " + " ".join(errors)
     with store.connection() as db:

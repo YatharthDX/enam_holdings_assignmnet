@@ -218,7 +218,7 @@ def request_json(endpoint, payload, headers, selected, timeout=None):
         timeout = timeout_seconds() if payload is not None else 15
     request = Request(endpoint, data=json.dumps(payload).encode() if payload is not None else None,
                       method="POST" if payload is not None else "GET", headers={
-        "Content-Type": "application/json", "User-Agent": "FINN/0.6.3", **headers})
+        "Content-Type": "application/json", "User-Agent": "FINN/0.6.4", **headers})
     try:
         with build_opener(NoRedirect()).open(request, timeout=timeout) as response:
             raw = response.read(MAX_RESPONSE_BYTES + 1)

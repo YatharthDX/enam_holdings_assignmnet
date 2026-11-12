@@ -2,7 +2,7 @@
 
 A mobile-first Indian-equity research desk for the ENAM Founding AI Engineer Build Challenge. **Push, Pull and Network work without an LLM key.** Optional OpenRouter/Gemini/OpenAI synthesis is secondary and off by default.
 
-**M6.1 adds default, free-only OpenRouter support.** Existing users: follow [UPGRADE_OPENROUTER.md](docs/UPGRADE_OPENROUTER.md); update the provider line in your existing `.env`. The AI feature remains optional and off in a fresh setup.
+**M6.4 speeds up document indexing** with a native PDF worker, recent-source caching and page progress. Existing M6.2/M6.3 users: follow [the indexing upgrade](docs/UPGRADE_FAST_INDEXING.md). Rebuild the local Docker image once for the new parser dependency. Optional AI remains secondary and off in a fresh local setup.
 
 Start with [REVIEWER_GUIDE.md](REVIEWER_GUIDE.md). See [the plan audit](docs/PLAN_AUDIT.md) for what M6 implements, deliberate design changes and external acceptance checks.
 
@@ -18,9 +18,9 @@ Start with [REVIEWER_GUIDE.md](REVIEWER_GUIDE.md). See [the plan audit](docs/PLA
 
 There are 16 mock holdings, three off-portfolio examples and 12 fictional contacts. Generic discovery and reviewed comparisons do not depend on that seed universe. Quantitative facts require a person to inspect the original and confirm the fields; this is not a universal automatic financial extractor.
 
-## Upgrade an integrated M5 or M6 repository
+## Upgrade an integrated M6.2 or M6.3 repository
 
-Apply `FINN_M6_1_OpenRouter_Default_Update.zip` in the repository root. It contains changed/new files relative to M5, including the M6 workflows and OpenRouter update. It does not contain your `.env`, database, credentials or Git history. No Python dependency or Dockerfile changed.
+Apply `FINN_M6_4_Fast_Indexing_Update.zip` in the repository root. This cumulative update applies over M6.2 or M6.3, including the hosted 800-page fix. It does not contain your `.env`, database, credentials or Git history. It adds pinned `pypdfium2==5.15.2` to `requirements.txt`; rebuild once before using a cached-image override. Older milestones need their preceding versioned updates first.
 
 Keep or update these entries in your existing `.env`:
 
@@ -33,18 +33,18 @@ FINN_ENABLE_LLM=0
 
 Leave `FINN_SESSION_SECRET` absent or blank to generate a persistent signing secret in the protected database. An explicit override needs at least 32 characters. Changing it invalidates existing access cookies.
 
-For the cached image already built on the Mac:
+Rebuild the local runtime image for the new dependency:
 
 ```bash
 export FINN_PORT=8090
-docker compose -f compose.yaml -f compose.local.yaml up --no-build --pull never --force-recreate --wait
+docker compose -f compose.yaml up --build --wait
 curl -fsS http://localhost:8090/health
-docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m unittest discover -s tests -v
-docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.smoke
-docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.acceptance --sessions-only
+docker compose -f compose.yaml exec -T app python -m unittest discover -s tests -v
+docker compose -f compose.yaml exec -T app python -m finn.smoke
+docker compose -f compose.yaml exec -T app python -m finn.acceptance --sessions-only
 ```
 
-Health should show `version: 0.6.3`, `public_demo: false` and `llm_enabled: false`. Open http://localhost:8090 and select **Open my workspace**. Until then the browser sees public evidence and fictional seeds.
+Health should show `version: 0.6.4`, `public_demo: false` and `llm_enabled: false`. Open http://localhost:8090 and select **Open my workspace**. Until then the browser sees public evidence and fictional seeds.
 
 The **first normal local workspace** adopts M5 alert preferences and alert read/history state once. Disposable acceptance sessions skip that adoption. Source indexes, public model-result caches and market/filing records remain shared and are not removed by the upgrade. Private workspace data now expire after 24 hours as specified in the design plan. Export before expiry using **Workspace → Export workspace**. The export is a readable snapshot; network profiles/edges can be re-imported, but there is no one-click restore of notes, facts or alerts.
 
@@ -101,7 +101,7 @@ For a phone on the same Wi-Fi, run `ipconfig getifaddr en0` on the Mac and open 
 
 **Primary documents.** Screener is a public link index, matched to the requested NSE symbol. FINN selects the first annual report and up to four transcript originals. It does not import Screener financial tables, summaries, broker research or news. “Latest four transcripts” does not guarantee exactly four completed quarters for every issuer; inspect the titles/coverage.
 
-Documents have SHA-256 revisions and parser-version identities. Unchanged bytes reuse the page index. A failed replacement preserves the previous usable revision. Indexed tickers are checked again after relevant new/material filing revisions, with one bounded automatic document refresh per acquisition cycle. A failed lookup can be retried explicitly; there is no unbounded retry loop.
+Documents have SHA-256 revisions and parser-version identities. Unchanged bytes reuse the page index. Find documents reuses exact-source indexes checked in the last six hours without downloading their PDFs again; Refresh sources bypasses that cache. New/material filing refreshes bypass it too. A native PDFium worker extracts text outside the web process, reports physical-page progress and has a 180-second public / 300-second local deadline. Accepted text is limited to eight million characters per PDF. Failed/timed-out workers publish no partial replacement. The first use after a parser-version upgrade rebuilds that document once. Progress polling updates the status in place instead of reranking the full corpus every four seconds. A failed replacement preserves the previous usable revision. Indexed tickers are checked again after relevant new/material filing revisions, with one bounded automatic document refresh per acquisition cycle. A failed lookup can be retried explicitly; there is no unbounded retry loop.
 
 PDF limits are 50 MiB/800 pages locally and 20 MiB/800 pages in public mode. Encrypted PDFs and scans without selectable text produce explicit errors; OCR is deferred. Retained raw originals are capped at 256 MiB locally and 64 MiB publicly. Old originals can be evicted while indexed text/metadata and issuer links remain. Registered retained revisions can be opened from source sheets.
 
@@ -174,8 +174,8 @@ Jobs renew ownership while waiting, with at most two concurrent generations. Def
 For a read-only check after restart:
 
 ```bash
-docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.diagnose
-docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.diagnose --models
+docker compose -f compose.yaml exec -T app python -m finn.diagnose
+docker compose -f compose.yaml exec -T app python -m finn.diagnose --models
 ```
 
 For OpenRouter, the first checks key metadata and the second lists bounded free schema-capable catalog IDs. These GETs do not generate or prove inference capacity. Disabled AI causes no provider access. Keep keys out of Git and shared AI-session exports.

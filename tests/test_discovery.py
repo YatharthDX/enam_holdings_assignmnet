@@ -56,7 +56,7 @@ class DiscoveryTests(unittest.TestCase):
         token = discovery.begin("NEWCO")
         discovery.run("NEWCO", token, fetch=lambda u: PAGE if "screener" in u else pdf.read_bytes())
         token = discovery.begin("NEWCO")
-        discovery.run("NEWCO", token, fetch=lambda u: PAGE if "screener" in u else b"<html>Access unavailable</html>")
+        discovery.run("NEWCO", token, fetch=lambda u: PAGE if "screener" in u else b"<html>Access unavailable</html>", force=True)
         self.assertEqual(discovery.status("NEWCO")["status"], "error")
         self.assertEqual(len(discovery.status("NEWCO")["sources"]), 2)
         self.assertTrue(desk.research("NEWCO", "semiconductor")["matches"])

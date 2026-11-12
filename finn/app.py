@@ -37,7 +37,7 @@ async def lifespan(application):
             refresher.stop()
 
 
-app = FastAPI(title="FINN investor desk", version="0.6.3", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(title="FINN investor desk", version="0.6.4", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/assets", StaticFiles(directory=WEB), name="assets")
 
 
@@ -92,7 +92,7 @@ def index():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "mode": "live_and_replay", "version": "0.6.3", "llm_enabled": llm.enabled(),
+    return {"status": "ok", "mode": "live_and_replay", "version": "0.6.4", "llm_enabled": llm.enabled(),
             "public_demo": runtime.public_demo(), "interactive_demo": runtime.interactive()}
 
 
@@ -360,7 +360,7 @@ def document_status(symbol: str):
 
 
 @app.post("/api/research/{symbol}/discover", status_code=202)
-def discover_documents(symbol: str, request: Request, tasks: BackgroundTasks):
+def discover_documents(symbol: str, request: Request, tasks: BackgroundTasks, force: bool = False):
     same_origin(request)
     workspaces.require(request)
     try:
@@ -370,7 +370,10 @@ def discover_documents(symbol: str, request: Request, tasks: BackgroundTasks):
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
     if token:
-        tasks.add_task(discovery.run, symbol, token)
+        if force:
+            tasks.add_task(discovery.run, symbol, token, force=True)
+        else:
+            tasks.add_task(discovery.run, symbol, token)
     return {"status": "running", "symbol": symbol}
 
 

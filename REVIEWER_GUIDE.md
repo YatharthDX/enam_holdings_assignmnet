@@ -10,7 +10,7 @@ docker compose up --build --wait
 curl -fsS http://localhost:8090/health
 ```
 
-Expect version `0.6.3`, `public_demo:false`, `llm_enabled:false`. Existing M5 users should preserve their `.env` and use [the upgrade steps](docs/UPGRADE_M6.md), including the existing-image override.
+Expect version `0.6.4`, `public_demo:false`, `llm_enabled:false`. Existing M5 users should preserve their `.env` and use [the upgrade steps](docs/UPGRADE_M6.md), including the existing-image override.
 
 Open http://localhost:8090. Anonymous visitors can inspect the supplied evidence/network; **Open my workspace** creates an isolated 24-hour demo workspace without email or keys. Export useful notes/facts before expiry. This is browser-possession access, not a verified investor account.
 
@@ -51,3 +51,6 @@ Local optional AI synthesis is collapsed and off by default. OpenRouter is the d
 See [ARCHITECTURE.md](docs/ARCHITECTURE.md), [PLAN_AUDIT.md](docs/PLAN_AUDIT.md) and [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) for isolation boundaries, source limitations and checks still requiring an actual deployment or operator.
 
 The OpenRouter option accepts only `openrouter/free` or `author/model:free`, requires JSON-schema support and requests zero-priced endpoints. Its free router is dynamic; the saved result displays the served model and reported cost when supplied. See [the OpenRouter upgrade guide](docs/UPGRADE_OPENROUTER.md).
+
+
+Indexing performance (M6.4): the local image must be rebuilt for the native parser. Find documents shows the current PDF/page; pressing it again reuses recent indexes for up to six hours. Refresh sources explicitly checks original bytes again. The benchmark and upgrade steps are in [UPGRADE_FAST_INDEXING.md](docs/UPGRADE_FAST_INDEXING.md). Public acquisition limits and the optional free-only OpenRouter policy remain in force.

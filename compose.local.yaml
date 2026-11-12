@@ -1,4 +1,5 @@
-# Run updated source using the runtime image from the successful M1 build.
+# Use a runtime image built with the current requirements.txt (M6.4 adds PDFium).
+# Build it first: docker compose -f compose.yaml up --build --wait
 # Start with: docker compose -f compose.yaml -f compose.local.yaml up --no-build --pull never --wait
 services:
   app:

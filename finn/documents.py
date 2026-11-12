@@ -5,7 +5,7 @@ import re
 import sqlite3
 import uuid
 import json
-from io import BytesIO
+import time
 from contextlib import closing, contextmanager
 from datetime import date
 from pathlib import Path
@@ -15,7 +15,8 @@ SYMBOL = re.compile(r"[A-Z0-9][A-Z0-9&.-]{0,24}")
 KINDS = {"annual_report": "Annual report", "transcript": "Earnings call"}
 MAX_BYTES = 50 * 1024 * 1024
 MAX_PAGES = 800
-PARSER_VERSION = "pdf-text-2"
+PARSER_VERSION = "pdfium-text-1"
+INDEX_CACHE_SECONDS = 6 * 3600
 
 
 def ticker(value):
@@ -153,8 +154,24 @@ def for_symbol(symbol, include_pages, include_revision=False):
         return result, [dict(p) for p in passages]
 
 
-def import_pdf(file, symbol, kind, title, url, published):
-    from pypdf import PdfReader
+def cached_index(symbol, kind, title, url, published="", max_age=INDEX_CACHE_SECONDS):
+    """Reuse a recently checked exact source, without downloading it again."""
+    doc_id = "local-" + hashlib.sha256((ticker(symbol) + "|" + source_url(url)).encode()).hexdigest()[:24]
+    with read_snapshot() as db:
+        if db is None or not db.execute("SELECT 1 FROM sqlite_master WHERE name='document_checked'").fetchone():
+            return None
+        row = db.execute("""SELECT d.kind,d.title,d.published,p.version,c.at FROM documents d
+            JOIN document_parsers p ON p.doc_id=d.id JOIN document_checked c ON c.doc_id=d.id
+            WHERE d.id=?""", (doc_id,)).fetchone()
+        if (row is None or tuple(row[:4]) != (KINDS[kind], title.strip(), published, PARSER_VERSION)
+                or row[4] < time.time() - max_age):
+            return None
+        pages = db.execute("SELECT COUNT(*) FROM pages WHERE doc_id=?", (doc_id,)).fetchone()[0]
+        return {"pages": pages, "checked_at": row[4]} if pages else None
+
+
+def import_pdf(file, symbol, kind, title, url, published, *, progress=None):
+    from . import pdf_text, runtime
 
     symbol = ticker(symbol)
     url = source_url(url)
@@ -181,27 +198,23 @@ def import_pdf(file, symbol, kind, title, url, published):
         raise ValueError("The source is not a PDF original.")
     digest = hashlib.sha256(raw).hexdigest()
     doc_id = "local-" + hashlib.sha256((symbol + "|" + url).encode()).hexdigest()[:24]
+    cached_count = None
     with read_snapshot() as existing:
         if existing is not None and existing.execute("SELECT 1 FROM sqlite_master WHERE name='document_parsers'").fetchone():
             cached = existing.execute("SELECT d.digest,d.kind,d.title,d.published,v.version FROM documents d "
                                       "JOIN document_parsers v ON v.doc_id=d.id WHERE d.id=?", (doc_id,)).fetchone()
             if cached and tuple(cached) == (digest, KINDS[kind], title, published, PARSER_VERSION):
-                count = existing.execute("SELECT COUNT(*) FROM pages WHERE doc_id=?", (doc_id,)).fetchone()[0]
-                retain_original(raw, digest)
-                return doc_id, count, "already indexed"
-    reader = PdfReader(BytesIO(raw))
-    if reader.is_encrypted:
-        raise ValueError("The PDF is encrypted. Use an unencrypted, text-searchable original.")
-    page_count = len(reader.pages)
-    if page_count > max_pages:
-        raise ValueError(f"The PDF has {page_count} pages; FINN supports at most {max_pages} pages per document.")
-    page_text = []
-    for page_number, page in enumerate(reader.pages, 1):
-        body = " ".join((page.extract_text() or "").split())
-        if body:
-            page_text.append((doc_id, page_number, body))
-    if not page_text:
-        raise ValueError("This PDF has no selectable text. Import a text-searchable original.")
+                cached_count = existing.execute("SELECT COUNT(*) FROM pages WHERE doc_id=?", (doc_id,)).fetchone()[0]
+    if cached_count is not None:
+        retain_original(raw, digest)
+        # Commit after the read snapshot closes, so the writer never waits on itself.
+        with sqlite3.connect(database_path()) as writer:
+            writer.execute("CREATE TABLE IF NOT EXISTS document_checked (doc_id TEXT PRIMARY KEY,at REAL NOT NULL)")
+            writer.execute("INSERT OR REPLACE INTO document_checked VALUES(?,?)", (doc_id, time.time()))
+        return doc_id, cached_count, "already indexed"
+    # The worker must parse the same immutable bytes used for the digest/citation.
+    rows = pdf_text.extract(raw, max_pages, progress=progress, timeout=180 if runtime.public_demo() else 300)
+    page_text = [(doc_id, number, body) for number, body in rows]
     retain_original(raw, digest)
 
     dest = database_path()
@@ -219,6 +232,7 @@ def import_pdf(file, symbol, kind, title, url, published):
             doc_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
             page INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY(doc_id, page))""")
         db.execute("CREATE TABLE IF NOT EXISTS document_parsers (doc_id TEXT PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,version TEXT NOT NULL)")
+        db.execute("CREATE TABLE IF NOT EXISTS document_checked (doc_id TEXT PRIMARY KEY,at REAL NOT NULL)")
         db.execute("CREATE TABLE IF NOT EXISTS document_versions (doc_id TEXT NOT NULL,digest TEXT NOT NULL,metadata TEXT NOT NULL,PRIMARY KEY(doc_id,digest))")
         old = db.execute("SELECT digest, kind, title, published FROM documents WHERE id=?",
                          (doc_id,)).fetchone()
@@ -229,5 +243,6 @@ def import_pdf(file, symbol, kind, title, url, published):
         db.execute("DELETE FROM pages WHERE doc_id=?", (doc_id,))
         db.executemany("INSERT INTO pages VALUES (?, ?, ?)", page_text)
         db.execute("INSERT INTO document_parsers VALUES(?,?) ON CONFLICT(doc_id) DO UPDATE SET version=excluded.version", (doc_id, PARSER_VERSION))
+        db.execute("INSERT OR REPLACE INTO document_checked VALUES(?,?)", (doc_id, time.time()))
         db.execute("INSERT OR IGNORE INTO document_versions VALUES(?,?,?)", (doc_id,digest,json.dumps({"url":url,"title":title,"published":published})))
     return doc_id, len(page_text), "indexed"

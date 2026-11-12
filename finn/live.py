@@ -281,7 +281,7 @@ def refresh_documents(limit=1):
         try:
             token = discovery.begin(item["symbol"])
             if token:
-                discovery.run(item["symbol"], token)
+                discovery.run(item["symbol"], token, force=True)
                 with store.connection() as db:
                     db.execute("DELETE FROM document_refresh_queue WHERE symbol=? AND event=?", (item["symbol"], item["event"]))
         except ValueError:

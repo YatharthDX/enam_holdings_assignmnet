@@ -2,6 +2,7 @@
 import json
 import os
 import tempfile
+import time
 import unittest
 from http.cookiejar import CookieJar
 from pathlib import Path
@@ -152,6 +153,35 @@ class FeatureHttpTests(unittest.TestCase):
                 self.assertEqual(report['ticker']['example']['page'],1)
                 with self.assertRaisesRegex(acceptance.AcceptanceError,'already has evidence'):
                     acceptance.run(self.base,ticker='COLDCO',wait_seconds=3)
+
+    def test_refresh_sources_query_bypasses_recent_index_without_calling_a_model(self):
+        from finn import discovery
+        client,_=self.new_client()
+        real_run=discovery.run
+        page=b'<a>NSE: FASTCO</a><h3>Annual reports</h3><ul><li><a href="https://issuer.example/fast.pdf">Annual Report FY2025</a></li></ul>'
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'original.pdf'
+            make_pdf(path,['Copper components are our business.'])
+            def index(symbol,token,*,force=False):
+                return real_run(symbol,token,force=force,fetch=lambda url:page if 'screener.in' in url else path.read_bytes())
+            def run(query=''):
+                self.call(client,'/api/research/FASTCO/discover'+query,{},'POST')
+                deadline=time.monotonic()+5
+                while time.monotonic()<deadline:
+                    job=self.call(client,'/api/research/FASTCO/discovery')['job']
+                    if job['status']!='running':return job
+                    time.sleep(.02)
+                self.fail('Controlled indexing did not finish')
+            with patch('finn.app.discovery.run',side_effect=index),patch('finn.llm.generate') as model:
+                self.assertEqual(run()['status'],'complete')
+                make_pdf(path,['Fluorochemicals are our new business.'])
+                self.assertTrue(run()['sources'][0]['cached'])
+                self.assertTrue(self.call(client,'/api/research/FASTCO?q=copper')['matches'])
+                refreshed=run('?force=true')
+                self.assertEqual(refreshed['status'],'complete')
+                self.assertFalse(refreshed['sources'][0]['cached'])
+                self.assertTrue(self.call(client,'/api/research/FASTCO?q=fluorochemicals')['matches'])
+                model.assert_not_called()
                 model.assert_not_called()
 
     def test_cached_original_http_is_exact_and_not_a_filesystem_gateway(self):
