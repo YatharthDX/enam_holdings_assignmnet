@@ -38,7 +38,9 @@ def database_path():
 
 def limits():
     from .runtime import public_demo
-    return (20 * 1024 * 1024, 600) if public_demo() else (MAX_BYTES, MAX_PAGES)
+    # Complete annual reports often exceed 600 pages. Keep the same bounded page
+    # coverage in both modes; public downloads retain their smaller byte budget.
+    return (20 * 1024 * 1024 if public_demo() else MAX_BYTES, MAX_PAGES)
 
 
 def original_path(digest):
@@ -170,8 +172,10 @@ def import_pdf(file, symbol, kind, title, url, published):
         published = ""
     path = Path(file)
     max_bytes, max_pages = limits()
-    if not path.is_file() or not 0 < path.stat().st_size <= max_bytes:
-        raise ValueError(f"Choose a local PDF smaller than {max_bytes // (1024*1024)} MiB.")
+    if not path.is_file() or path.stat().st_size == 0:
+        raise ValueError("The PDF file is empty or unavailable.")
+    if path.stat().st_size > max_bytes:
+        raise ValueError(f"The PDF exceeds FINN's {max_bytes // (1024*1024)} MiB file-size limit.")
     raw = path.read_bytes()
     if b"%PDF-" not in raw[:1024]:
         raise ValueError("The source is not a PDF original.")
@@ -186,8 +190,11 @@ def import_pdf(file, symbol, kind, title, url, published):
                 retain_original(raw, digest)
                 return doc_id, count, "already indexed"
     reader = PdfReader(BytesIO(raw))
-    if reader.is_encrypted or len(reader.pages) > max_pages:
-        raise ValueError(f"Use an unencrypted PDF with at most {max_pages} pages.")
+    if reader.is_encrypted:
+        raise ValueError("The PDF is encrypted. Use an unencrypted, text-searchable original.")
+    page_count = len(reader.pages)
+    if page_count > max_pages:
+        raise ValueError(f"The PDF has {page_count} pages; FINN supports at most {max_pages} pages per document.")
     page_text = []
     for page_number, page in enumerate(reader.pages, 1):
         body = " ".join((page.extract_text() or "").split())

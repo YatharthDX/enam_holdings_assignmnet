@@ -1,5 +1,5 @@
-import {dateLabel, empty, esc, heading, icon, personCard, route, sourceButton} from './ui.js?v=0.6.2';
-import {reconnectCards} from './network-view.js?v=0.6.2';
+import {dateLabel, empty, esc, heading, icon, personCard, route, sourceButton} from './ui.js?v=0.6.3';
+import {reconnectCards} from './network-view.js?v=0.6.3';
 
 export function modeSwitch(mode) {
   return `<div class="mode-switch" aria-label="Data mode">

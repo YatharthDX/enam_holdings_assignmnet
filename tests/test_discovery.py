@@ -70,6 +70,18 @@ class DiscoveryTests(unittest.TestCase):
             with self.assertRaises(providers.SourceError):
                 discovery.public_url(url)
 
+    def test_public_discovery_indexes_all_677_pages_of_a_large_annual_report(self):
+        pdf = self.root / "large-report.pdf"
+        make_pdf(pdf, ["Revenue and business overview."] * 676 + ["Finalpage public evidence."])
+        annual_only = PAGE.replace(b"<h3>Concalls</h3>", b"<h3>Other</h3>")
+        with patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "1", "FINN_INTERACTIVE_DEMO": "1"}):
+            token = discovery.begin("NEWCO")
+            discovery.run("NEWCO", token, fetch=lambda url: annual_only if "screener.in" in url else pdf.read_bytes())
+            job = discovery.status("NEWCO")
+            self.assertEqual(job["status"], "complete", job["detail"])
+            self.assertEqual(job["sources"][0]["pages"], 677)
+            self.assertEqual(desk.research("NEWCO", "finalpage")["matches"][0]["page"], 677)
+
 
 if __name__ == "__main__":
     unittest.main()

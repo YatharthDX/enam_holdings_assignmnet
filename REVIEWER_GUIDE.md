@@ -10,7 +10,7 @@ docker compose up --build --wait
 curl -fsS http://localhost:8090/health
 ```
 
-Expect version `0.6.2`, `public_demo:false`, `llm_enabled:false`. Existing M5 users should preserve their `.env` and use [the upgrade steps](docs/UPGRADE_M6.md), including the existing-image override.
+Expect version `0.6.3`, `public_demo:false`, `llm_enabled:false`. Existing M5 users should preserve their `.env` and use [the upgrade steps](docs/UPGRADE_M6.md), including the existing-image override.
 
 Open http://localhost:8090. Anonymous visitors can inspect the supplied evidence/network; **Open my workspace** creates an isolated 24-hour demo workspace without email or keys. Export useful notes/facts before expiry. This is browser-possession access, not a verified investor account.
 

@@ -86,6 +86,42 @@ class ImportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             documents.import_pdf(**{**self.args, "published": "2099-01-01"})
 
+    def test_public_index_accepts_a_677_page_report_and_preserves_last_page(self):
+        make_pdf(self.pdf, ["Business operations continue."] * 676 + ["Finalpage evidence on funding."])
+        with patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "1"}):
+            _, pages, state = documents.import_pdf(**self.args)
+            self.assertEqual((pages, state), (677, "indexed"))
+            results = desk.research("NEWCO", "finalpage")["matches"]
+            self.assertEqual(results[0]["page"], 677)
+
+    def test_report_above_800_pages_is_rejected_in_both_modes_without_replacing_evidence(self):
+        make_pdf(self.pdf, ["Verified previous evidence remains available."])
+        documents.import_pdf(**self.args)
+        make_pdf(self.pdf, ["Replacement evidence."] * 801)
+        for public in ("0", "1"):
+            with self.subTest(public=public), patch.dict(os.environ, {"FINN_PUBLIC_DEMO": public}):
+                with self.assertRaisesRegex(ValueError, "801 pages.*800"):
+                    documents.import_pdf(**self.args)
+                self.assertTrue(desk.research("NEWCO", "previous")["matches"])
+
+    def test_encrypted_pdf_error_is_separate_from_page_count_error(self):
+        writer = PdfWriter()
+        writer.add_blank_page(width=360, height=400)
+        writer.encrypt("fixture-password")
+        writer.write(self.pdf)
+        with patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "1"}):
+            with self.assertRaisesRegex(ValueError, "PDF is encrypted") as caught:
+                documents.import_pdf(**self.args)
+        self.assertNotIn("pages", str(caught.exception))
+
+    def test_public_download_size_bound_remains_in_effect(self):
+        with self.pdf.open("wb") as file:
+            file.write(b"%PDF-")
+            file.truncate(20 * 1024 * 1024 + 1)
+        with patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "1"}):
+            with self.assertRaisesRegex(ValueError, "20 MiB"):
+                documents.import_pdf(**self.args)
+
 
 if __name__ == "__main__":
     unittest.main()

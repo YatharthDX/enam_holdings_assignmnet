@@ -1,8 +1,8 @@
-import {clearRecords, esc, nav, openSheet, route, getRecord, setWorkspaceAccess} from './ui.js?v=0.6.2';
-import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.6.2';
-import {liveBriefView} from './live-view.js?v=0.6.2';
-import {workspaceNotice, workspaceView} from './workspace-view.js?v=0.6.2';
-import {identityResult} from './network-view.js?v=0.6.2';
+import {clearRecords, esc, nav, openSheet, route, getRecord, setWorkspaceAccess} from './ui.js?v=0.6.3';
+import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.6.3';
+import {liveBriefView} from './live-view.js?v=0.6.3';
+import {workspaceNotice, workspaceView} from './workspace-view.js?v=0.6.3';
+import {identityResult} from './network-view.js?v=0.6.3';
 
 const workspace = document.querySelector('#workspace');
 const sheet = document.querySelector('#sheet');

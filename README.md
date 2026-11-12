@@ -44,7 +44,7 @@ docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.
 docker compose -f compose.yaml -f compose.local.yaml exec -T app python -m finn.acceptance --sessions-only
 ```
 
-Health should show `version: 0.6.2`, `public_demo: false` and `llm_enabled: false`. Open http://localhost:8090 and select **Open my workspace**. Until then the browser sees public evidence and fictional seeds.
+Health should show `version: 0.6.3`, `public_demo: false` and `llm_enabled: false`. Open http://localhost:8090 and select **Open my workspace**. Until then the browser sees public evidence and fictional seeds.
 
 The **first normal local workspace** adopts M5 alert preferences and alert read/history state once. Disposable acceptance sessions skip that adoption. Source indexes, public model-result caches and market/filing records remain shared and are not removed by the upgrade. Private workspace data now expire after 24 hours as specified in the design plan. Export before expiry using **Workspace → Export workspace**. The export is a readable snapshot; network profiles/edges can be re-imported, but there is no one-click restore of notes, facts or alerts.
 
@@ -103,7 +103,7 @@ For a phone on the same Wi-Fi, run `ipconfig getifaddr en0` on the Mac and open 
 
 Documents have SHA-256 revisions and parser-version identities. Unchanged bytes reuse the page index. A failed replacement preserves the previous usable revision. Indexed tickers are checked again after relevant new/material filing revisions, with one bounded automatic document refresh per acquisition cycle. A failed lookup can be retried explicitly; there is no unbounded retry loop.
 
-PDF limits are 50 MiB/800 pages locally and 20 MiB/600 pages in public mode. Encrypted PDFs and scans without selectable text produce explicit errors; OCR is deferred. Retained raw originals are capped at 256 MiB locally and 64 MiB publicly. Old originals can be evicted while indexed text/metadata and issuer links remain. Registered retained revisions can be opened from source sheets.
+PDF limits are 50 MiB/800 pages locally and 20 MiB/800 pages in public mode. Encrypted PDFs and scans without selectable text produce explicit errors; OCR is deferred. Retained raw originals are capped at 256 MiB locally and 64 MiB publicly. Old originals can be evicted while indexed text/metadata and issuer links remain. Registered retained revisions can be opened from source sheets.
 
 **Professional profiles.** The supplied data are synthetic. Employment, education and acquaintance edges are separate. Shared employers/schools never manufacture an introduction. Import accepts at most 200 profiles/600 edges within a 256 KiB request. Public deployments accept fictional profiles only. Real local imports need an attested opt-in, investment-research purpose, provenance and an unexpired consent date. FINN validates those records; it does not independently verify that consent or an identity is authentic.
 
