@@ -41,6 +41,8 @@ TABLES = [
 def prepare(db):
     for sql in TABLES:
         db.execute(sql)
+    if "strength" not in {r[1] for r in db.execute("PRAGMA table_info(workspace_edges)")}:
+        db.execute("ALTER TABLE workspace_edges ADD COLUMN strength INTEGER NOT NULL DEFAULT 2")
 
 
 def current():
@@ -101,7 +103,8 @@ def create(now=None, adopt_legacy=True):
         db.execute("INSERT INTO workspaces VALUES(?,?,?,?,?)", (wid, now, expires, json.dumps(settings), json.dumps(holdings)))
         for person in desk.NETWORK["people"]:
             db.execute("INSERT INTO workspace_people VALUES(?,?,?)", (wid, person["id"], json.dumps(person)))
-        db.executemany("INSERT INTO workspace_edges VALUES(?,?,?)", [(wid, a, b) for a, b in desk.NETWORK["edges"]])
+        db.executemany("INSERT INTO workspace_edges(workspace,left_id,right_id,strength) VALUES(?,?,?,?)",
+                       [(wid, edge[0], edge[1], edge[2] if len(edge) > 2 else 2) for edge in desk.NETWORK["edges"]])
         if adopt:
             db.execute("INSERT INTO workspace_meta VALUES('legacy_claimed',?)", (wid,))
             db.execute("INSERT INTO workspace_alerts SELECT ?,id,event_at,created,body,seen FROM live_alerts", (wid,))

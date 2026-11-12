@@ -1,0 +1,21 @@
+name: Keep demo warm
+
+# Render Free sleeps after 15 idle minutes and a cold start takes ~20-50 s.
+# One service pinged around the clock stays inside the 750 free instance-hours a month.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Wake the demo
+        env:
+          DEMO_URL: ${{ vars.FINN_DEMO_URL || 'https://finn-demo-ojov.onrender.com' }}
+        run: curl -fsS --retry 2 --max-time 90 "$DEMO_URL/health"

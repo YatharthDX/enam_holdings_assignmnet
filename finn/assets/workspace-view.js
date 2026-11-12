@@ -1,8 +1,8 @@
-import {esc, heading, icon, route} from './ui.js?v=0.6.4';
+import {esc, heading, icon, route} from './ui.js?v=0.7.0';
 
 export function workspaceNotice(session) {
   if (session?.authenticated) return `<aside class="workspace-notice"><span><strong>Your private demo workspace</strong> · expires within 24 hours</span><a href="#account" class="text-button">Workspace ${icon('chevron',14)}</a></aside>`;
-  return `<aside class="workspace-notice"><div><strong>${session?.runtime?.public_demo?'Public demo':'Demo preview'}</strong><p>Historical evidence and fictional contacts. Open your own workspace for research and alert controls.</p></div>
+  return `<aside class="workspace-notice"><div><strong>${session?.runtime?.public_demo?'Public demo':'Demo preview'}</strong><p>Real exchange filings, results and prices; the network is fictional. Open your own workspace to set alert thresholds, edit holdings and add contacts.</p></div>
     ${session?.runtime?.can_start_workspace?'<button type="button" id="open-workspace" class="button secondary">Open my workspace</button>':'<span class="meta">Read only</span>'}</aside>`;
 }
 

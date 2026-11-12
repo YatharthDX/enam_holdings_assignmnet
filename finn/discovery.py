@@ -1,5 +1,6 @@
 """Discover issuer documents via public link metadata and index the originals."""
 import hashlib
+import re
 import ipaddress
 import json
 import socket
@@ -19,6 +20,24 @@ from pypdf.errors import PyPdfError
 from . import documents, live, live_store as store, providers
 
 LIMIT = 5
+TRANSCRIPTS = 8
+MONTHS = {m: i for i, m in enumerate("jan feb mar apr may jun jul aug sep oct nov dec".split(), 1)}
+
+
+def pdf_link(url):
+    """A direct PDF, or an exchange PDF handler such as BSE's AnnPdfOpen.aspx?Pname=<id>.pdf."""
+    parts = urlsplit(url)
+    if parts.path.casefold().endswith(".pdf"):
+        return True
+    host = (parts.hostname or "").casefold()
+    return (host == "bseindia.com" or host.endswith(".bseindia.com")) and parts.query.casefold().endswith(".pdf")
+
+
+def call_month(label):
+    match = re.search(r"\b([A-Za-z]{3})[a-z]*\s+((?:19|20)\d{2})\b", label or "")
+    if not match or match.group(1).casefold() not in MONTHS:
+        return None
+    return f"{match.group(2)}-{MONTHS[match.group(1).casefold()]:02d}"
 
 
 @dataclass
@@ -102,16 +121,23 @@ class PublicRedirect(HTTPRedirectHandler):
 
 def fetch_public(url):
     public_url(url, resolve=True)
-    return providers.request_bytes(url, build_opener(PublicRedirect()), limit=documents.limits()[0])
+    # Exchange PDF handlers can be slow to start streaming a large original.
+    return providers.request_bytes(url, build_opener(PublicRedirect()), limit=documents.limits()[0], timeout=45)
 
 
 def parse_links(body, symbol, page_url):
     parser = DocumentPage()
     parser.feed(body.decode("utf-8"))
-    issuer_verified = any(
-        node.tag == "a" and "".join(node.text().upper().split()) == "NSE:" + symbol
-        for node in nodes(parser.root)
-    )
+    def names_symbol(node):
+        if node.tag != "a":
+            return False
+        if "".join(node.text().upper().split()) == "NSE:" + symbol:
+            return True
+        href = urlsplit(node.attrs.get("href") or "")
+        host = (href.hostname or "").casefold()
+        return (host == "nseindia.com" or host.endswith(".nseindia.com")) and \
+            re.search(r"(?:^|&)symbol=" + re.escape(symbol) + r"(?:&|$)", href.query, re.I) is not None
+    issuer_verified = any(names_symbol(node) for node in nodes(parser.root))
     if not issuer_verified:
         raise providers.SourceError("The document index could not be matched to the requested NSE symbol.")
     heading = ""
@@ -133,7 +159,7 @@ def parse_links(body, symbol, page_url):
             url = public_url(urljoin(page_url, node.attrs.get("href", "")))
         except providers.SourceError:
             continue
-        if url in seen or not urlsplit(url).path.casefold().endswith(".pdf"):
+        if url in seen or not pdf_link(url):
             continue
         ancestor = node
         while ancestor.parent and ancestor.tag != "li":
@@ -141,12 +167,17 @@ def parse_links(body, symbol, page_url):
         context = " ".join(ancestor.text().split())
         if len(context) > 200:
             context = label
-        title = label if kind == "annual_report" else context.split("Transcript")[0].strip() + " earnings-call transcript"
+        period = context.split("Transcript")[0].strip()
+        title = label if kind == "annual_report" else period + " earnings-call transcript"
         found.append({"kind": kind, "url": url, "title": symbol + " · " + title,
-                      "period_label": context, "published": None})
+                      "period_label": context, "published": None,
+                      "call_month": call_month(period) if kind == "transcript" else None})
         seen.add(url)
-    annual = [row for row in found if row["kind"] == "annual_report"][:1]
-    calls = [row for row in found if row["kind"] == "transcript"][:4]
+    from .runtime import public_demo
+    annual = [row for row in found if row["kind"] == "annual_report"][:1 if public_demo() else 2]
+    calls = [row for row in found if row["kind"] == "transcript"]
+    # Newest first by the call month Screener prints; page order is the tiebreak.
+    calls = sorted(calls, key=lambda row: row["call_month"] or "", reverse=True)[:TRANSCRIPTS]
     return annual + calls
 
 
@@ -305,3 +336,24 @@ def _run(symbol, token, fetch=fetch_public, *, force=False):
         db.execute("UPDATE document_jobs SET status=?, finished=?, detail=? WHERE symbol=? AND token=?",
                    ("partial" if indexed and errors else "complete" if indexed else "error",
                     providers.iso(live.clock()), detail[:2400], symbol, token))
+    if indexed:
+        follow_up(symbol, online=fetch is fetch_public)
+
+
+def follow_up(symbol, online=True):
+    """After new transcripts: promises (cached per revision) and the filed-results history."""
+    from . import guidance, llm, results, runtime
+    try:
+        with store.connection() as db:
+            have_card = results.card_for(db, symbol) is not None
+        if not have_card and online:
+            card = results.fetch(symbol)
+            with store.connection() as db:
+                results.store_cards(db, {symbol: card})
+    except (providers.SourceError, ValueError, OSError) as exc:
+        live.LOGGER.info("results history for %s unavailable: %s", symbol, exc)
+    try:
+        # Public deployments use the rule pass; model extraction is a local opt-in.
+        guidance.refresh(symbol, use_model=online and llm.enabled() and not runtime.public_demo(), log=live.LOGGER.info)
+    except Exception:
+        live.LOGGER.exception("Guidance extraction failed for %s", symbol)

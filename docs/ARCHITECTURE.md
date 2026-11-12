@@ -1,115 +1,73 @@
-# FINN architecture and design decisions
+# FINN architecture
 
-FINN connects one investor journey: notice a relevant filing, inspect its primary evidence, and find a person with relevant experience. Rules and explicit evidence support that path across Push, Pull and Network. A model is an optional secondary reader.
-
-## Runtime and ownership
+FINN is one FastAPI service with native JavaScript modules and SQLite, packaged as one Docker image. The design goal was the smallest system that does the real thing: real exchange data in, numbers computed in code, people and promises traced to the page they came from, and models used only where reading prose genuinely needs one.
 
 ```mermaid
 flowchart TD
-  B["Phone browser"] --> A["FastAPI and native JavaScript"]
-  A --> W["Authorized private workspace"]
-  A --> S["Shared public source cache"]
-  S --> P["NSE, Yahoo and issuer originals"]
-  W --> N["Profiles, paths and reviewed facts"]
-  A -. "Local explicit opt-in" .-> M["OpenRouter, Gemini or OpenAI"]
+  Phone["Phone browser"] --> API["FastAPI + JS modules"]
+  API --> WS["Private workspace rows<br/>holdings · contacts · notes · alerts · facts"]
+  API --> PUB["Shared public cache<br/>filings · bars · XBRL cards · pages + FTS5 · appointees · guidance"]
+  Snap["finn/data/snapshot.json<br/>(built where NSE is reachable)"] -->|startup load| PUB
+  Sched["Local scheduler (15 min)"] --> PUB
+  PUB --- NSE["NSE: announcements, XBRL results"]
+  PUB --- YH["Yahoo daily bars"]
+  PUB --- SCR["Screener link index → issuer/BSE PDFs"]
+  API -. "public text only, opt-in" .-> LLM["OpenRouter (free) / Gemini / OpenAI"]
 ```
 
-One image serves static native-JavaScript modules and JSON routes. Python threads execute bounded acquisition/research jobs. SQLite stores shared public source data and separately owned private rows; raw public PDFs are retained by hash under a bounded data directory.
+## 1. Data pipelines
 
-This intentionally replaces the initial React/TypeScript, PostgreSQL and cloud-object-store proposal. It keeps installation small and the main workflows free of model dependence. It does not provide PostgreSQL row policies, independent durable workers, a managed backup service, verified investor accounts or a persistent free-host disk.
+| Source | Fetch and refresh | Storage and identity | Linking |
+| --- | --- | --- | --- |
+| Filings | NSE `corporate-announcements` (per symbol for snapshots, date range for refreshes); RSS fallback marked partial; official CSV import | `live_filings` keyed by symbol + attachment URL; every metadata revision kept | Classified from NSE's subject and the filing text; management changes and results trigger enrichment |
+| Results | NSE `integrated-filing-results` (from the March 2025 quarter) and the older `corporates-financial-results` listing; XBRL instances parsed directly | `results_cards`: latest card plus 10-quarter history; consolidated preferred; never mixes scopes | Attached to the results filing broadcast within −1…+3 days; history feeds promised-vs-delivered |
+| Prices | Yahoo completed daily bars after the 16:15 IST buffer; a missing final close is taken from quote metadata only when stamped after that session | `daily_bars` | Price ±X% and volume >N× the prior-20-session mean, per workspace rules |
+| Documents | Screener's public link index for the NSE symbol (verified on the page) → up to 2 annual reports and 8 transcripts, newest by call month; BSE PDF handlers accepted | Pages by SHA-256 revision and parser version; PDFium in a subprocess with a deadline; FTS5 index kept by triggers | Transcripts feed guidance extraction, cached per revision |
+| People in filings | Regulation 30 attachments for management-change filings | `filing_people`: name, change, role, brief profile, employers (+ joining year), schools | A person named without a profile borrows the same issuer's earlier profile for that name |
+| Network | Fictional seed; local JSON import with consent fields | Workspace-owned profiles with dated employment and schools; acquaintance edges with strength 1–3 | Matched to filing people by organisation (legal-suffix-insensitive, "X Group" covers X companies) and exact school |
 
-| Module | Responsibility |
-| --- | --- |
-| `app.py` | HTTP capabilities, signed-session/CSRF enforcement, validation, bounded bodies, original-file routes and job entry points |
-| `workspaces.py` | Session signatures, owner context, settings/holdings/alert state, migration, export/delete, expiry and public source quotas |
-| `providers.py` | Public NSE JSON/RSS/CSV and completed Yahoo daily-bar normalization |
-| `live.py`, `live_store.py` | Source/job state, metadata ranking/grouping, alerts, scheduled refresh and tracked-document queue |
-| `discovery.py`, `documents.py` | Verified ticker link discovery, bounded downloads, lease ownership, native process extraction, timed cancellation, six-hour source cache, transactional pages and retained originals |
-| `research.py` | Exact topic passages, unaccepted candidate suggestions, reviewed fact validation, compatible comparisons and financial deltas |
-| `network.py` | Owned profiles/dated employment/notes, explicit paths, relevance, identity corroboration and reconnect reasons |
-| `desk.py`, `data/` | Dated historical benchmark and synthetic demo seeds |
-| `analysis.py`, `llm.py` | Optional public-passage synthesis, provider transports, evidence validation and result/job cache |
-| `smoke.py`, `acceptance.py` | Read-only deployment checks, disposable session isolation and optional cold-ticker acceptance |
-| `assets/` | Brief, Research, People, private workbench/account, reusable source/person sheets and phone navigation |
+**Snapshot.** NSE rejects many cloud IP ranges and free hosts lose their disk on restart. `python -m finn.snapshot build` runs where the sources are reachable and writes everything above for the portfolio (plus guidance for the research names) into one ~400 KB JSON file that ships with the image. The brief anchors its windows to the snapshot time until a live fetch is newer, so a reviewer sees real, dated records rather than an empty feed.
 
-## Public and private boundaries
+**Concurrency.** SQLite runs in WAL mode so polling readers never stall a document import's commit; long jobs hold renewable leases so a stale worker cannot overwrite a newer one.
 
-Shared data include public prices, filings/revisions, document pages/hashes, acquisition status and public-only model results. A browser workspace owns holdings, alert preferences/history/read state, profiles, acquaintance links, private contact notes and reviewed facts. Human review decisions are private even though their source document is public.
+## 2. What is computed, what is read by a model
 
-API middleware establishes an owner from a valid signed cookie. Callers cannot pass another workspace ID to select rows. Every private lookup/mutation includes that owner; mutations additionally require CSRF and same-origin checks. Foreign-key cascades and tested delete paths remove owned rows. Anonymous APIs expose public evidence and fictional seeds, not another browser's rows.
-
-Sessions are possession-based demo access. The cookie contains a random session identifier/expiry/HMAC; only its hash is stored server-side. Cookies are HttpOnly, SameSite=Lax and Secure on HTTPS. Signing secrets are server-side, generated and retained in a protected database unless explicitly configured. Session/workspace lifetime is 24 hours with no recovery mechanism.
-
-Access immediately rejects expired/revoked cookies. Startup, API access and a 60-second janitor remove expired rows. Consent-expired real profiles also lose their notes/edges. Erasure revokes the current session and removes private data while retaining shared public sources. Export contains readable owned settings/holdings/profiles/edges/notes/facts, never cookies, CSRF tokens or signing/model keys; alert history is not exported. Only network profiles/edges currently support re-import.
-
-SQLite uses foreign keys, secure-delete and restricted file permissions. These are useful prototype controls, not storage encryption, a verified identity system or a replacement for production database row policies. The server operator can access its database. An HTTP LAN demo is appropriate for synthetic data; use trusted HTTPS before sensitive real-profile use.
-
-## Four source pipelines
-
-| Input | Identity and processing | Reliability / limitation |
+| Task | Approach | Why |
 | --- | --- | --- |
-| EOD market | NSE symbol mapped to Yahoo `.NS`; one completed-session bar; price/volume rules | Excludes an active daily candle; prior-20 baseline excludes current volume; suppresses invalid/insufficient/split-affected comparisons |
-| Filings | Exchange attachment/event identity, issuer, IST timestamp, title/details and source links | Overlapping date-window fetches; RSS explicitly partial; exact duplicates group conservatively; attachment amendments retain metadata revisions |
-| Fundamentals | Symbol-verified Screener link index → issuer-original PDFs → hash/parser-version pages | One annual report/up to four transcripts; unknown release dates labelled; scans without text/oversized/encrypted inputs fail explicitly; failed replacements preserve usable prior revisions |
-| Network | Synthetic seed or attested local import; dated employment and education separate from acquaintance edges | Direct/two-hop path requires recorded links; no profile scraping, inferred acquaintance or namesake biography |
+| Filing materiality | Rules over NSE subject + text | Deterministic, explainable, free |
+| Revenue / EBITDA / PBT / PAT, QoQ / YoY, margins, tax rate | Code over XBRL | Exact figures; no extraction risk |
+| Appointee name, role, career, schools | Rules over the Reg 30 text; optional cheap model refinement | Structured enough for rules; the model may only return strings present in the filing |
+| Guidance statements | Cheap model over keyword-prefiltered passages (≤14 per transcript) + rules; union, de-duplicated | Prose needs reading; prefiltering keeps each call to ~20 k characters |
+| Verdicts | Code | A model never decides whether a promise was met |
+| Narrative synthesis (optional) | One stronger-model call over ≤18 public passages, citations verified, cached | Only where reasoning across passages adds value |
 
-NSE symbols are the implemented company identifier. ISIN/alias history, symbol-renaming reconciliation, BSE-only instruments and a separate security master remain future work. Generic discovery verifies the requested ticker in the link index; it does not independently verify all seed symbols against a current official securities list.
+**Routing and cost.** Bulk extraction uses `FINN_<PROVIDER>_BULK_MODEL` (defaults to the main model); synthesis uses the main model. The default provider is OpenRouter's free router with zero-price caps, so the demo costs nothing. Every extraction is cached by document revision: a transcript is read once, ever. A failed or rate-limited call falls back to rules; there is no silent paid fallback.
 
-A tracked ticker's relevant new/material filing revision queues document refresh. Each acquisition cycle processes at most one such job. Ownership tokens and renewed leases prevent a stale worker from replacing a current job; replacements are transactional. Same hash/parser version skips parsing. Retained raw PDFs are content-addressed, atomically written and bounded to 256 MiB locally/64 MiB publicly. Eviction removes a cached-file link, not source text or the issuer URL.
+**Verification.** Every model statement must quote its passage exactly, and every number must appear literally in that quote (so "16%" cannot become 0.16). Analyst questions are never guidance. Periods are explicit, or inferred from the call date and labelled as inferred. Model and rule outputs carry their method in the UI.
 
-Public interactive acquisition has one document worker, document starts capped at five/workspace/hour and 20 globally/hour, and one live refresh globally/15 minutes. Private workspaces are capped at 100 and monitored source symbols at 100 across holdings. These are prototype resource bounds, not a comprehensive public abuse-control system.
+**Agents.** None act autonomously. The scheduler and enrichment are ordinary code with bounded work per cycle; nothing contacts people or places orders.
 
-## Evidence and comparisons
+## 3. Privacy, security and consent
 
-The source-first brief selects exact contiguous spans by business/outlook/cash/risk terms. It presents excerpts with document/page links and labels selection as partial. A missing term match is not proof that a company omitted disclosure.
+- **Ownership.** A signed, opaque, HttpOnly cookie identifies a workspace (only its hash is stored). Holdings, alert rules and history, contacts, edges, notes and reviewed facts are workspace-owned; queries are always filtered by the server-chosen owner; mutations require CSRF plus same-origin. Workspaces expire after 24 hours and can be exported or erased at any time; foreign keys cascade the deletion.
+- **What reaches a model.** Public filing and transcript text only. Holdings, contacts, notes and facts are never sent.
+- **Personal data stored.** For contacts: name, roles with dates, schools, topics, an optional private note and last-contact date. For people in filings: what the company itself disclosed. No phone numbers or emails are requested.
+- **Consent.** The public demo accepts fictional profiles only. Local imports of real profiles require an attested opt-in, an investment-research purpose, provenance and an expiry; expired consent removes the profile with its links and notes. FINN validates these records but cannot verify an attestation.
+- **Storage.** SQLite with secure-delete; the database and its WAL side files are mode 0600. Access logs are off so names in query strings are not logged.
+- **Production next steps.** Real accounts (SSO) and organisation membership; Postgres with row-level security; encryption at rest with managed keys; backups with a ≤30-day deletion horizon; a consent ledger for imported profiles; a data-processing agreement with any model provider.
 
-Candidates are unaccepted drafts. Speaker heuristics distinguish an explicit analyst/question marker from management; ambiguous authority stays unidentified. Review suggestions only fill straightforward percentage metrics/ranges, explicit periods and bases. Nothing is auto-saved.
+## 4. Cloud
 
-A reviewed fact records source revision, quote/page, publication date, speaker authority, metric, fiscal period, units, currency basis, consolidation scope and numeric value/range. Validation checks source ownership by ticker, exact page span and literal numbers; a person confirms the accounting interpretation. It does not prove that the selected figure semantically represents the chosen metric.
+| Piece | Where | Why |
+| --- | --- | --- |
+| Web app | Render Free (Docker) | Zero cost, HTTPS at the edge, phone-reachable |
+| Keep-warm | GitHub Actions cron hitting `/health` every 10 min | Avoids 20–50 s cold starts within the free hours |
+| Snapshot build | A machine with an Indian/residential IP (today: the developer's laptop) | NSE blocks many cloud ranges |
+| Models | OpenRouter free router by default; Gemini/OpenAI optional | Free tier for the demo; provider-agnostic adapter |
+| CI | GitHub Actions builds the real container and runs the suite, smoke and session checks | The deployed artefact is the tested artefact |
 
-Comparison uses Decimal arithmetic after matching metric, period, units, scope and basis. Original/revised guidance remains separately visible. A missing actual is pending; incompatible/unknown metadata, chronology problems, changed revisions or conflicting latest outcomes withhold a verdict. An actual can be above, within or below a compatible range.
+The production shape is the same split with durable pieces: a scheduled ingestion worker in an Indian region, Postgres + object storage for originals, and the web tier stateless.
 
-Financial records use the latest unambiguous reviewed actual for a matching basis/period. QoQ/YoY require exact adjacent/prior-year fiscal quarters; percentages produce pp deltas, while amount growth requires a positive base. There is no universal table extraction, accounting reconciliation or automatic four-line results card in Push.
+## 5. Known limits
 
-As-of requests exclude later and undated shared evidence. Explicit private publication-date confirmations apply only to that person's reviewed facts. The historical INFY case filters its forecasts/outcome independently. Optional synthesis is disabled on dated views to avoid future context.
-
-## People and identity
-
-Profiles store dated roles separately from links and notes. Employer/topic relevance, recorded distance and recency drive recommendations. Existing school/employer overlap never creates an acquaintance edge. No path means no introduction.
-
-Identity matching requires full name plus recorded employer, role and tenure at the event date. CEO/CFO/MD aliases normalize to the corresponding title. Multiple corroborated profiles remain ambiguous; future/unknown tenure remains unresolved. Explicit appointment metadata can nominate an incoming person for this check; unclear filing text is left unknown. This is corroboration against supplied records, not independent identity verification or automatic biography generation.
-
-A private last-contact date can produce a reconnect reason after 90 days. Pull refers to the current research context; Push refers to an actual filing context. No email, message or contact request is sent by the application.
-
-## Consent, retention and logs
-
-Public demos reject real profile imports. Local real imports require an attested opt-in, explicit investment-research purpose, provenance and nonexpired consent date. Profile-ID merge supports correction; withdrawal deletes owned profile/links/notes. No external consent service is contacted and FINN cannot establish authenticity of an attestation. The UI/import schema does not solicit private phone numbers or email addresses.
-
-Application HTTP access logs are disabled to avoid query-string names/notes. Provider failures are redacted and raw prompts/keys are not logged by FINN. Reverse-proxy/hosting logs and downloaded user exports are outside its retention controls.
-
-The application creates no backups. The plan's proposed 30-day expiry for deleted data in future backups is therefore a production-policy requirement, not a claimed backup feature. Storage encryption, restricted managed access, restore/deletion drills, organization membership and recovery should precede real investor use.
-
-## Optional models and agents
-
-Local explicit opt-in defaults to OpenRouter and also supports Gemini/OpenAI through one structured-output workflow. OpenRouter accepts only the free router or explicit `:free` IDs, requests strict schema-capable zero-priced endpoints and disables provider fallback. Its Chat Completions adapter discards reasoning text and maps visible output into the shared verifier. Actual model and reported cost remain distinct from selected route and list-price estimates. The dynamic free route may choose different models for new uncached requests; pin a supported `:free` ID for reproducible evaluation. It sends only up to 18 public passages/36,000 characters from at most five documents. Private names, notes, holdings and reviewed facts are excluded. Citation/page/numeric-literal checks establish provenance, not semantic entailment; interpretations are labelled and unsupported findings are withheld.
-
-Caches separate provider/model/lens/document/prompt identities. Ownership renewal protects long calls; at most two generation jobs run. Tokens, latency and available estimates are recorded. No automatic retry or provider fallback is made. Metadata diagnostics are GET-only; live inference/cost has not been validated in this release build.
-
-No free-running agent searches, plans external actions, contacts people or places trades. Scheduled ingestion is ordinary application code. Public deployments keep the acquisition scheduler off. Optional public AI requires both enable flags, interactive workspaces and an explicit OpenRouter selection. Other transports are blocked publicly. Research-job creation atomically reserves an anonymous SQLite quota entry: 3 new starts/workspace/hour, 5 globally/hour, 15 globally/24 hours, one concurrent job. Shared cached results bypass these counters; failures consume an attempt. Deleting a workspace does not erase global counters. The counters reset when an ephemeral host loses its SQLite file; these are prototype controls, not distributed abuse protection.
-
-## Deployment and verification
-
-The Render Free Blueprint enables bounded interactive synthetic workspaces. Anonymous visitors start with a dated replay, and can open their own workspace to discover fresh evidence. A strict public read-only configuration also remains available. Free-host local storage is ephemeral; this is a demo-hosting tradeoff, not durable private hosting.
-
-`FINN_TRUST_PROXY=1` trusts forwarded HTTPS only behind a known edge (the supplied Render configuration). Direct local mode uses 0. Validate the actual host's cookie/origin behavior after deployment.
-
-Tests use real loopback HTTP routes and controlled external responses. They test two-browser isolation, expiry/withdrawal, cold-ticker indexing/review, source revisions, arithmetic, thresholds, model boundaries and failure recovery. Browser checks cover the new controls at 360/390/430 px. Docker/GitHub CI, actual deployment, live independent-ticker access, source reconciliation and second-person phone timing remain operator checks. See [PLAN_AUDIT.md](PLAN_AUDIT.md) and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
-
-
-## PDF extraction and indexing latency (M6.4)
-
-Text extraction uses pinned pypdfium2/PDFium in a disposable subprocess; pypdf is retained for PDF metadata/encryption checks and test fixtures. PDFium is not thread-safe, so concurrent document callers never share its process. The worker closes each page/text handle, emits bounded progress, receives no provider credentials, and is terminated on the parsing deadline. This is process lifecycle isolation, not a complete OS sandbox. The exact immutable bytes used for the SHA-256 revision are parsed and retained; replacing an operator input file mid-run cannot mismatch evidence and source. A document commits all accepted pages atomically, preserving the prior revision on failure.
-
-The six-hour source cache is keyed by exact URL, symbol, kind, title, publication date and parser version; it records the last byte check separately from the issuer publication date. Each Find request still checks the link listing for new documents. Explicit Refresh sources and relevant filing revisions bypass the cache. The cache and anonymous quotas remain on the ephemeral demo filesystem. No automatic retries, model calls, paid infrastructure or extra public indexing concurrency were added.
-
-References: [PDFium threading and handle lifecycle](https://pypdfium2.readthedocs.io/en/stable/python_api.html), [distribution and licensing](https://pypdfium2.readthedocs.io/en/stable/readme.html).
+Scanned PDFs need OCR (not implemented). Some issuer sites serve incomplete TLS chains, so their PDFs fail verification and are reported, not bypassed. Revenue guidance given in constant currency is shown but not scored against INR filings. Filed EBIT can differ from a company's "adjusted" EBIT. The relationship map (competitors, suppliers, customers) is a small curated file.

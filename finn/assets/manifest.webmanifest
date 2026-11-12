@@ -1,0 +1,11 @@
+{
+  "name": "FINN investor desk",
+  "short_name": "FINN",
+  "description": "Portfolio filings, promised vs delivered, and who in your network can explain it.",
+  "start_url": "/#brief",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f6f0",
+  "theme_color": "#123a32",
+  "icons": [{"src": "/assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]
+}

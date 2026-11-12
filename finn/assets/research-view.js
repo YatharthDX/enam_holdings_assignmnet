@@ -1,4 +1,4 @@
-import {esc, dateLabel, route, sourceButton, empty} from './ui.js?v=0.6.4';
+import {esc, dateLabel, route, sourceButton, empty} from './ui.js?v=0.7.0';
 
 const option=(value,label,selected)=>`<option value="${esc(value)}" ${value===selected?'selected':''}>${esc(label)}</option>`;
 const label=value=>value.replaceAll('_',' ');
@@ -46,4 +46,60 @@ export function reviewedResearch(data) {
   const drafts=r.candidates.length?`<details class="panel"><summary>Statements to review · ${r.candidates.length}</summary><p class="panel-intro">Rule-selected candidates, not accepted financial facts. Analyst questions and unidentified speakers remain labelled.</p>${r.candidates.map((c,i)=>`<article class="candidate"><div class="meta">${esc(c.speaker_kind)} · ${esc(c.source.title)} · p. ${c.source.page}</div><p>${esc(c.quote.slice(0,320))}${c.quote.length>320?'…':''}</p>${sourceButton(c.source,'Inspect')}${r.can_review?`<button class="text-button" type="button" data-review-candidate="${i}">Review fields</button>`:''}</article>`).join('')}</details>`:'';
   const saved=r.facts.length?`<details class="panel"><summary>Your reviewed facts · ${r.facts.length}</summary>${r.facts.map(f=>`<article class="candidate"><div class="meta">${esc(r.metrics[f.metric])} · ${esc(f.period)} · ${esc(f.kind)}${f.stale?' · Source changed':''}</div><p>${esc(f.quote)}</p>${sourceButton(f.source,'Evidence')}${r.can_review?`<button type="button" class="text-button" data-delete-fact="${esc(f.id)}">Remove fact</button>`:''}</article>`).join('')}</details>`:'';
   return `${comparisons?`<section class="panel"><div class="section-meta">Your reviewed comparisons · Deterministic arithmetic</div><h2>Promises and delivery</h2>${comparisons}</section>`:''}${financials}${drafts}${review}${saved}`;
+}
+
+const VERDICT = {below:'Missed', above:'Beat', within:'Delivered', tracking_below:'Tracking below', tracking_within:'On track',
+  tracking_above:'Tracking above', due_later:'Not due yet', different_basis:'Different basis', pending:'Awaiting results', aspiration:'Aspiration'};
+const monthLabel = m => m ? new Intl.DateTimeFormat('en-GB',{month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(m+'-01T00:00:00Z')) : 'Undated';
+const range = i => i.high==null ? 'at least '+i.low+'%' : i.low===i.high ? i.low+'%' : i.low+'–'+i.high+'%';
+
+function promiseRow(r) {
+  const i=r.item, rep=r.repeated||{count:1};
+  const delivered = r.actual!=null && !['due_later'].includes(r.status)
+    ? `Delivered <b>${r.actual.toFixed(1)}%</b> · ${esc(r.span)}${r.points?` · ${r.points.toFixed(r.points<0.1?2:1)} pp ${r.status.includes('below')?'below':'above'} the ${r.status.includes('below')?'lower':'upper'} bound`:''}`
+    : esc(r.span);
+  return `<article class="promise ${esc(r.status)}"><div class="promise-head"><span class="verdict-chip ${esc(r.status)}">${esc(VERDICT[r.status]||r.status)}</span>
+    <strong>${esc(i.label)}${i.period&&i.period!=='multi-year'?' · '+esc(i.period):''}</strong><span>promised ${esc(range(i))}${i.basis==='constant_currency'?' CC':''}</span></div>
+    <p class="promise-actual">${delivered}</p>
+    <p class="promise-quote">“${esc(i.quote.length>220?i.quote.slice(0,i.quote.lastIndexOf(' ',220))+'…':i.quote)}”</p>
+    <p class="coverage">${esc(monthLabel(i.call_month))} call${rep.count>1?` · repeated on ${rep.count} calls since ${esc(monthLabel(rep.first))}`:''}${i.period_inferred?' · period inferred from the call date':''} · ${i.method.startsWith('model')?'model-extracted, quote and figures verified':'rule-extracted'} ${sourceButton(i.source,'Transcript')}</p></article>`;
+}
+
+export function promisesPanel(data) {
+  const p=data.promises;
+  if (!p || (!p.rows.length && !p.quarters.length)) return '';
+  const scored=p.rows.filter(r=>!['aspiration','pending'].includes(r.status));
+  const rest=p.rows.filter(r=>['aspiration','pending'].includes(r.status));
+  return `<section class="panel promises"><div class="section-meta">Promised vs delivered · call transcripts × exchange XBRL</div>
+    <h2>What management said, and what the filings show</h2>
+    ${revisionsBlock(p)}
+    ${p.rows.length?scored.slice(0,6).map(promiseRow).join('')+
+      (scored.length>6||rest.length?`<details><summary>More statements · ${scored.slice(6).length+rest.length}</summary>${[...scored.slice(6),...rest].map(promiseRow).join('')}</details>`:'')
+      :empty('No guidance statements yet','Find documents to read this company’s call transcripts. Only statements with a figure that can be traced to the transcript are kept.')}
+    <p class="coverage">${esc(p.method)} Margins use filed lines (EBIT = PBT − exceptional items + finance costs − other income); a company's own "adjusted" figures can differ.</p>
+    ${filedQuarters(p)}</section>`;
+}
+
+function revisionsBlock(p) {
+  if (!p.revisions?.length) return '';
+  return `<div class="revisions">${p.revisions.map(r=>`<div class="revision"><div class="promise-head">
+    <span class="verdict-chip ${r.metric==='tax_rate'?'':r.direction==='lowered'?'below':r.direction==='raised'?'above':''}">Guidance ${esc(r.direction)}</span>
+    <strong>${esc(r.label)} · ${esc(r.period)}${r.basis==='constant_currency'?' · CC':''}</strong></div>
+    <ol class="revision-steps">${r.steps.map(s=>`<li><span>${esc(monthLabel(s.call_month))}</span><b>${esc(range(s))}</b>${sourceButton(s.source,'Quote')}</li>`).join('')}</ol></div>`).join('')}</div>`;
+}
+
+function filedQuarters(p) {
+  const h=p.quarters||[];
+  if (!h.length) return '';
+  const byQ=Object.fromEntries(h.map(q=>[q.quarter,q]));
+  const yoy=(q,key)=>{const prior=byQ['Q'+q.quarter[1]+' FY'+String(+q.quarter.slice(-2)-1).padStart(2,'0')];
+    return prior&&prior[key]>0&&q[key]!=null?((q[key]/prior[key]-1)*100):null;};
+  const n=v=>v==null?'—':new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v);
+  const pct=v=>v==null?'—':`<span class="${v<0?'fall':'rise'}">${v<0?'−':'+'}${Math.abs(v).toFixed(1)}%</span>`;
+  const lender=p.card?.kind!=='industrial';
+  return `<details class="filed-quarters" open><summary>Filed quarters · ₹ crore · ${esc(p.card?.scope||'')}</summary><div class="market-scroll"><table class="market-table">
+    <thead><tr><th>Quarter</th><th>Revenue</th><th>YoY</th><th>${lender?'NII':'EBITDA %'}</th><th>PAT</th><th>YoY</th></tr></thead><tbody>
+    ${h.slice(-6).reverse().map(q=>`<tr><th>${esc(q.quarter)}</th><td>${n(q.revenue)}</td><td>${pct(yoy(q,'revenue'))}</td>
+      <td>${lender?n(q.core):q.core!=null&&q.revenue?(q.core/q.revenue*100).toFixed(1)+'%':'—'}</td><td>${n(q.pat)}</td><td>${pct(yoy(q,'pat'))}</td></tr>`).join('')}
+    </tbody></table></div>${p.card?`<p class="coverage">${sourceButton(p.card.source,'Latest XBRL filing')}</p>`:''}</details>`;
 }

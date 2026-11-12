@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from . import analysis, desk, discovery, documents, live, live_store, llm, runtime, workspaces, network, research
+from . import analysis, desk, discovery, documents, live, live_store, llm, runtime, workspaces, network, research, snapshot, guidance
 
 WEB = Path(__file__).parent / "assets"
 
@@ -23,6 +23,8 @@ async def lifespan(application):
         pass
     with live_store.connection() as db:
         workspaces.expire(db)
+        snapshot.load(db)
+    documents.prepare_index()
     logging.getLogger("uvicorn.access").disabled = True
     janitor = workspaces.Janitor()
     janitor.start()
@@ -37,7 +39,7 @@ async def lifespan(application):
             refresher.stop()
 
 
-app = FastAPI(title="FINN investor desk", version="0.6.4", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(title="FINN investor desk", version="0.7.0", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/assets", StaticFiles(directory=WEB), name="assets")
 
 
@@ -92,7 +94,7 @@ def index():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "mode": "live_and_replay", "version": "0.6.4", "llm_enabled": llm.enabled(),
+    return {"status": "ok", "mode": "live_and_replay", "version": "0.7.0", "llm_enabled": llm.enabled(),
             "public_demo": runtime.public_demo(), "interactive_demo": runtime.interactive()}
 
 
@@ -203,6 +205,7 @@ def get_research(symbol: str, q: str = Query("", max_length=160), lens: str = "b
                                               "forecasts": [f for f in result["comparison"]["forecasts"] if known(f["source"])]}
                 result["comparison"] = None
         result["discovery"] = discovery.status(result["company"]["symbol"])
+        result["promises"] = None if cutoff else guidance.track(result["company"]["symbol"])
         try:
             result["analysis"] = ({"enabled": False, "job": None, "lens": lens, "lenses": [], "date_filtered": bool(cutoff),
                                    "public_demo": runtime.public_demo(), "needs_workspace": not workspaces.private()}

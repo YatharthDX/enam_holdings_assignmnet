@@ -1,160 +1,383 @@
 {
+  "investor": {
+    "name": "You",
+    "role": "Portfolio manager",
+    "education": [
+      "Indian Institute of Management, Bangalore",
+      "Indian Institute of Technology, Kanpur"
+    ],
+    "employment": [
+      {
+        "employer": "Kotak Institutional Equities",
+        "role": "Research analyst",
+        "start": "2009-01-01",
+        "end": "2014-12-31",
+        "precision": "year"
+      },
+      {
+        "employer": "Fictional Capital Partners",
+        "role": "Portfolio manager",
+        "start": "2015-01-01",
+        "end": "",
+        "precision": "year"
+      }
+    ]
+  },
   "people": [
     {
       "id": "mira",
       "name": "Mira Shah",
       "role": "Delivery lead",
       "employer": "INFY",
-      "tenure": "2019\u20132023",
+      "tenure": "2019–2023",
       "topics": [
         "IT delivery",
         "contract ramp-up",
         "revenue recognition"
       ],
       "question": "Which milestones usually separate a signed contract from billable delivery?",
-      "synthetic": true
+      "synthetic": true,
+      "education": [
+        "National Institute of Technology, Tiruchirappalli"
+      ],
+      "employment": [
+        {
+          "employer": "INFY",
+          "role": "Delivery lead",
+          "start": "2019-01-01",
+          "end": "2023-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Wipro",
+          "role": "Project manager",
+          "start": "2012-01-01",
+          "end": "2018-12-31",
+          "precision": "year"
+        }
+      ],
+      "last_contact": "2026-03-10"
     },
     {
       "id": "arjun",
       "name": "Arjun Menon",
       "role": "Account director",
       "employer": "TCS",
-      "tenure": "2016\u20132022",
+      "tenure": "2016–2022",
       "topics": [
         "IT services",
         "client budgets",
         "IT delivery"
       ],
       "question": "How do client budget approvals affect the timing of new projects?",
-      "synthetic": true
+      "synthetic": true,
+      "education": [
+        "Indian Institute of Management, Calcutta"
+      ],
+      "employment": [
+        {
+          "employer": "TCS",
+          "role": "Account director",
+          "start": "2016-01-01",
+          "end": "2022-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Accenture",
+          "role": "Managing director, technology",
+          "start": "2023-01-01",
+          "end": "",
+          "precision": "year"
+        }
+      ],
+      "last_contact": "2026-09-20"
     },
     {
       "id": "tara",
       "name": "Tara Bose",
       "role": "Program director",
       "employer": "INFY",
-      "tenure": "2017\u20132022",
+      "tenure": "2017–2022",
       "topics": [
         "IT delivery",
         "contract staffing"
       ],
       "question": "What can delay the staffing of a large services engagement?",
-      "synthetic": true
+      "synthetic": true,
+      "education": [
+        "Jadavpur University"
+      ],
+      "employment": [
+        {
+          "employer": "INFY",
+          "role": "Program director",
+          "start": "2017-01-01",
+          "end": "2022-12-31",
+          "precision": "year"
+        }
+      ]
     },
     {
       "id": "dev",
       "name": "Dev Shah",
       "role": "Engineering manager",
       "employer": "LTTS",
-      "tenure": "2018\u20132024",
+      "tenure": "2018–2024",
       "topics": [
         "engineering services",
         "embedded systems"
       ],
       "question": "Where do product engineering customers spend the longest on validation?",
-      "synthetic": true
+      "synthetic": true,
+      "education": [
+        "College of Engineering, Pune"
+      ],
+      "employment": [
+        {
+          "employer": "LTTS",
+          "role": "Engineering manager",
+          "start": "2018-01-01",
+          "end": "2024-03-31",
+          "precision": "year"
+        },
+        {
+          "employer": "KPITTECH",
+          "role": "Director, software-defined vehicles",
+          "start": "2024-04-01",
+          "end": "",
+          "precision": "year"
+        }
+      ]
     },
     {
       "id": "leela",
       "name": "Leela Nair",
       "role": "Process engineer",
       "employer": "SRF",
-      "tenure": "2017\u20132021",
+      "tenure": "2017–2021",
       "topics": [
         "specialty chemicals",
         "plant utilisation"
       ],
       "question": "How does qualification by a customer affect plant utilisation?",
-      "synthetic": true
+      "synthetic": true,
+      "education": [
+        "Institute of Chemical Technology, Mumbai"
+      ],
+      "employment": [
+        {
+          "employer": "SRF",
+          "role": "Process engineer",
+          "start": "2017-01-01",
+          "end": "2021-06-30",
+          "precision": "year"
+        },
+        {
+          "employer": "Navin Fluorine International",
+          "role": "Plant head",
+          "start": "2021-07-01",
+          "end": "",
+          "precision": "year"
+        }
+      ],
+      "last_contact": "2026-05-02"
     },
     {
       "id": "kabir",
       "name": "Kabir Sethi",
       "role": "Channel manager",
       "employer": "HAVELLS",
-      "tenure": "2019\u20132024",
+      "tenure": "2019–2024",
       "topics": [
         "electricals",
         "distribution",
         "channel inventory"
       ],
       "question": "Which signs distinguish dealer restocking from consumer demand?",
-      "synthetic": true
+      "synthetic": true,
+      "education": [
+        "XLRI Jamshedpur"
+      ],
+      "employment": [
+        {
+          "employer": "HAVELLS",
+          "role": "Regional sales head",
+          "start": "2019-01-01",
+          "end": "2024-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Britannia Industries",
+          "role": "Area sales manager",
+          "start": "2012-01-01",
+          "end": "2018-12-31",
+          "precision": "year"
+        }
+      ]
     },
     {
       "id": "sana",
       "name": "Sana Ali",
       "role": "Credit manager",
       "employer": "FEDERALBNK",
-      "tenure": "2018\u20132023",
+      "tenure": "2018–2023",
       "topics": [
         "banking",
         "credit",
         "underwriting"
       ],
       "question": "Which early signals do underwriters watch when a loan book grows?",
-      "synthetic": true
+      "synthetic": true,
+      "education": [
+        "Indian Institute of Management, Lucknow"
+      ],
+      "employment": [
+        {
+          "employer": "FEDERALBNK",
+          "role": "Credit head, retail",
+          "start": "2018-01-01",
+          "end": "2023-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Kotak Mahindra Bank",
+          "role": "Credit manager",
+          "start": "2010-01-01",
+          "end": "2017-12-31",
+          "precision": "year"
+        }
+      ],
+      "last_contact": "2026-07-01"
     },
     {
       "id": "ira",
       "name": "Ira Sen",
       "role": "Grid planning engineer",
       "employer": "TATAPOWER",
-      "tenure": "2018\u20132022",
+      "tenure": "2018–2022",
       "topics": [
         "power",
         "transmission",
         "grid planning"
       ],
       "question": "What typically determines the lead time of a grid upgrade?",
-      "synthetic": true
+      "synthetic": true,
+      "education": [
+        "Delhi College of Engineering"
+      ],
+      "employment": [
+        {
+          "employer": "TATAPOWER",
+          "role": "Grid planning engineer",
+          "start": "2018-01-01",
+          "end": "2022-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Tata Power Delhi Distribution Limited",
+          "role": "Network engineer",
+          "start": "2012-01-01",
+          "end": "2017-12-31",
+          "precision": "year"
+        }
+      ]
     },
     {
       "id": "neel",
       "name": "Neel Roy",
       "role": "Clinical operations lead",
       "employer": "SYNGENE",
-      "tenure": "2016\u20132023",
+      "tenure": "2016–2023",
       "topics": [
         "life sciences",
         "clinical research"
       ],
       "question": "Which milestones most often alter a research contract timeline?",
-      "synthetic": true
+      "synthetic": true,
+      "education": [
+        "Manipal University"
+      ],
+      "employment": [
+        {
+          "employer": "SYNGENE",
+          "role": "Clinical operations lead",
+          "start": "2016-01-01",
+          "end": "2023-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Biocon",
+          "role": "Scientist",
+          "start": "2010-01-01",
+          "end": "2015-12-31",
+          "precision": "year"
+        }
+      ]
     },
     {
       "id": "rhea",
       "name": "Rhea Kapur",
       "role": "Product manager",
       "employer": "POLYCAB",
-      "tenure": "2017\u20132024",
+      "tenure": "2017–2024",
       "topics": [
         "electricals",
         "cables",
         "distribution"
       ],
       "question": "How does the mix of institutional and retail orders affect lead times?",
-      "synthetic": true
+      "synthetic": true,
+      "education": [
+        "Nirma University"
+      ],
+      "employment": [
+        {
+          "employer": "POLYCAB",
+          "role": "Product manager, cables",
+          "start": "2017-01-01",
+          "end": "2024-12-31",
+          "precision": "year"
+        }
+      ]
     },
     {
       "id": "amit",
       "name": "Amit Vyas",
       "role": "Plant manager",
       "employer": "FINEORG",
-      "tenure": "2019\u20132023",
+      "tenure": "2019–2023",
       "topics": [
         "specialty chemicals",
         "process yields"
       ],
       "question": "Which process changes take longest to validate at scale?",
-      "synthetic": true
+      "synthetic": true,
+      "education": [
+        "Institute of Chemical Technology, Mumbai"
+      ],
+      "employment": [
+        {
+          "employer": "FINEORG",
+          "role": "Process chemist",
+          "start": "2019-01-01",
+          "end": "2023-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "AARTIIND",
+          "role": "Plant chemist",
+          "start": "2014-01-01",
+          "end": "2018-12-31",
+          "precision": "year"
+        }
+      ]
     },
     {
       "id": "asha",
       "name": "Asha Das",
       "role": "Credit analyst",
       "employer": "HDFCBANK",
-      "tenure": "2017\u20132022",
+      "tenure": "2017–2022",
       "topics": [
         "banking",
         "underwriting",
@@ -165,16 +388,570 @@
       "employment": [
         {
           "employer": "HDFCBANK",
-          "role": "Credit analyst",
+          "role": "Underwriting head",
           "start": "2017-01-01",
           "end": "2022-12-31",
           "precision": "year"
         },
         {
-          "employer": "Acme Controls (fictional)",
-          "role": "Risk adviser",
-          "start": "2023-01-01",
+          "employer": "ICICI Bank",
+          "role": "Relationship manager, corporate banking",
+          "start": "2009-01-01",
+          "end": "2016-12-31",
+          "precision": "year"
+        }
+      ],
+      "education": [
+        "Indian Institute of Management, Bangalore"
+      ],
+      "last_contact": "2026-08-14"
+    },
+    {
+      "id": "vikram",
+      "name": "Vikram Rao",
+      "role": "Head of bancassurance",
+      "employer": "ICICI Prudential Life Insurance",
+      "tenure": "2019–2025",
+      "topics": [
+        "insurance",
+        "bancassurance",
+        "distribution"
+      ],
+      "question": "How does a new bank CEO usually change the bank's insurance and wealth distribution priorities?",
+      "synthetic": true,
+      "education": [
+        "Indian Institute of Management, Indore"
+      ],
+      "employment": [
+        {
+          "employer": "ICICI Prudential Life Insurance",
+          "role": "Head of bancassurance",
+          "start": "2019-01-01",
+          "end": "2025-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "ICICI Bank",
+          "role": "Branch banking manager",
+          "start": "2011-01-01",
+          "end": "2018-12-31",
+          "precision": "year"
+        }
+      ]
+    },
+    {
+      "id": "priya",
+      "name": "Priya Natarajan",
+      "role": "Director, distribution regulation",
+      "employer": "Tata Power",
+      "tenure": "2006–2016",
+      "topics": [
+        "power distribution",
+        "regulation",
+        "tariffs"
+      ],
+      "question": "Which regulatory approvals decide how fast a distribution utility can grow its renewables book?",
+      "synthetic": true,
+      "education": [
+        "Indian Institute of Technology, Bombay"
+      ],
+      "employment": [
+        {
+          "employer": "Reliance Energy",
+          "role": "Assistant engineer, distribution",
+          "start": "1999-01-01",
+          "end": "2005-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "TATAPOWER",
+          "role": "Director, distribution regulation",
+          "start": "2006-01-01",
+          "end": "2016-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Power Sector Advisory LLP",
+          "role": "Partner",
+          "start": "2017-01-01",
+          "end": "",
+          "precision": "year"
+        }
+      ],
+      "last_contact": "2025-12-15"
+    },
+    {
+      "id": "rohan",
+      "name": "Rohan Mehta",
+      "role": "Programme director, powertrain software",
+      "employer": "KPITTECH",
+      "tenure": "2016–2021",
+      "topics": [
+        "automotive software",
+        "powertrain",
+        "engineering services"
+      ],
+      "question": "Which OEM programmes move first when software-defined vehicle budgets are cut?",
+      "synthetic": true,
+      "education": [
+        "College of Engineering, Pune"
+      ],
+      "employment": [
+        {
+          "employer": "Cummins India",
+          "role": "Controls engineer",
+          "start": "2008-01-01",
+          "end": "2015-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "KPITTECH",
+          "role": "Programme director, powertrain software",
+          "start": "2016-01-01",
+          "end": "2021-12-31",
+          "precision": "year"
+        }
+      ]
+    },
+    {
+      "id": "nisha",
+      "name": "Nisha Kulkarni",
+      "role": "Head of modern trade",
+      "employer": "Pidilite Industries",
+      "tenure": "2020–present",
+      "topics": [
+        "FMCG distribution",
+        "modern trade",
+        "channel inventory"
+      ],
+      "question": "How long does it take a consumer-goods sales leader to reset a dealer channel?",
+      "synthetic": true,
+      "education": [
+        "Symbiosis Institute of Business Management"
+      ],
+      "employment": [
+        {
+          "employer": "Britannia Industries",
+          "role": "Key account manager",
+          "start": "2014-01-01",
+          "end": "2019-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Pidilite Industries",
+          "role": "Head of modern trade",
+          "start": "2020-01-01",
+          "end": "",
+          "precision": "year"
+        }
+      ]
+    },
+    {
+      "id": "farhan",
+      "name": "Farhan Qureshi",
+      "role": "Business development director",
+      "employer": "Aurigene Pharmaceutical Services",
+      "tenure": "2015–2021",
+      "topics": [
+        "CRDMO",
+        "contract research",
+        "pharma services"
+      ],
+      "question": "What do pharma clients check before moving a programme to a new CRDMO?",
+      "synthetic": true,
+      "education": [
+        "Indian School of Business"
+      ],
+      "employment": [
+        {
+          "employer": "Dr. Reddy's Laboratories",
+          "role": "Strategy manager",
+          "start": "2015-01-01",
+          "end": "2018-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Aurigene Pharmaceutical Services",
+          "role": "Business development director",
+          "start": "2019-01-01",
+          "end": "2021-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Syngene International",
+          "role": "Associate director, business development",
+          "start": "2022-01-01",
+          "end": "",
+          "precision": "year"
+        }
+      ],
+      "last_contact": "2026-01-20"
+    },
+    {
+      "id": "meera",
+      "name": "Meera Iyer",
+      "role": "Chief digital officer",
+      "employer": "Aditya Birla Sun Life Insurance",
+      "tenure": "2016–2022",
+      "topics": [
+        "insurance technology",
+        "digital banking"
+      ],
+      "question": "Which digital initiatives does a bank board usually ask an independent director to oversee?",
+      "synthetic": true,
+      "education": [
+        "University of Mumbai"
+      ],
+      "employment": [
+        {
+          "employer": "Aditya Birla Sun Life Insurance",
+          "role": "Chief digital officer",
+          "start": "2016-01-01",
+          "end": "2022-12-31",
+          "precision": "year"
+        }
+      ]
+    },
+    {
+      "id": "karan",
+      "name": "Karan Malhotra",
+      "role": "Head of retail liabilities",
+      "employer": "FEDERALBNK",
+      "tenure": "2019–present",
+      "topics": [
+        "retail banking",
+        "deposits",
+        "branch banking"
+      ],
+      "question": "How quickly can a mid-size bank grow deposits without raising its cost of funds?",
+      "synthetic": true,
+      "education": [
+        "Indian Institute of Management, Kozhikode"
+      ],
+      "employment": [
+        {
+          "employer": "Kotak Mahindra Bank",
+          "role": "Regional head, consumer banking",
+          "start": "2005-01-01",
+          "end": "2019-03-31",
+          "precision": "year"
+        },
+        {
+          "employer": "FEDERALBNK",
+          "role": "Head of retail liabilities",
+          "start": "2019-04-01",
+          "end": "",
+          "precision": "year"
+        }
+      ]
+    },
+    {
+      "id": "deepa",
+      "name": "Deepa Menon",
+      "role": "Treasury head",
+      "employer": "HDFCBANK",
+      "tenure": "2020–2024",
+      "topics": [
+        "treasury",
+        "bank liquidity",
+        "credit-deposit ratio"
+      ],
+      "question": "How does the bank's credit-deposit ratio constrain loan growth this year?",
+      "synthetic": true,
+      "education": [
+        "Indian Institute of Management, Bangalore"
+      ],
+      "employment": [
+        {
+          "employer": "Axis Bank",
+          "role": "Treasury dealer",
+          "start": "2011-01-01",
+          "end": "2019-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "HDFCBANK",
+          "role": "Treasury head",
+          "start": "2020-01-01",
           "end": "2024-12-31",
+          "precision": "year"
+        }
+      ]
+    },
+    {
+      "id": "gaurav",
+      "name": "Gaurav Singh",
+      "role": "Head of bids, transmission",
+      "employer": "Sterlite Power",
+      "tenure": "2019–present",
+      "topics": [
+        "power transmission",
+        "TBCB bidding",
+        "project execution"
+      ],
+      "question": "What return do winners of tariff-based transmission bids actually earn after execution risk?",
+      "synthetic": true,
+      "education": [
+        "Indian Institute of Technology, Roorkee"
+      ],
+      "employment": [
+        {
+          "employer": "POWERGRID",
+          "role": "Senior manager, projects",
+          "start": "2008-01-01",
+          "end": "2019-03-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Sterlite Power",
+          "role": "Head of bids, transmission",
+          "start": "2019-04-01",
+          "end": "",
+          "precision": "year"
+        }
+      ],
+      "last_contact": "2026-02-11"
+    },
+    {
+      "id": "lakshmi",
+      "name": "Lakshmi Narayan",
+      "role": "Zonal credit head",
+      "employer": "Cholamandalam Investment and Finance",
+      "tenure": "2020–present",
+      "topics": [
+        "rural lending",
+        "vehicle finance",
+        "collections"
+      ],
+      "question": "Which early indicators show stress in rural vehicle loans before it reaches reported NPAs?",
+      "synthetic": true,
+      "education": [
+        "University of Madras"
+      ],
+      "employment": [
+        {
+          "employer": "SHRIRAMFIN",
+          "role": "Branch credit manager",
+          "start": "2012-01-01",
+          "end": "2019-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Cholamandalam Investment and Finance",
+          "role": "Zonal credit head",
+          "start": "2020-01-01",
+          "end": "",
+          "precision": "year"
+        }
+      ]
+    },
+    {
+      "id": "ananya",
+      "name": "Ananya Ghosh",
+      "role": "Head of fluorochemicals strategy",
+      "employer": "Deepak Nitrite",
+      "tenure": "2015–2022",
+      "topics": [
+        "specialty chemicals",
+        "fluorochemicals",
+        "agrochemical intermediates"
+      ],
+      "question": "Where is Chinese pricing pressure in specialty chemical intermediates easing first?",
+      "synthetic": true,
+      "education": [
+        "Institute of Chemical Technology, Mumbai"
+      ],
+      "employment": [
+        {
+          "employer": "Deepak Nitrite",
+          "role": "Head of fluorochemicals strategy",
+          "start": "2015-01-01",
+          "end": "2022-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Specialty Chemicals Advisory",
+          "role": "Independent consultant",
+          "start": "2023-01-01",
+          "end": "",
+          "precision": "year"
+        }
+      ],
+      "last_contact": "2026-04-05"
+    },
+    {
+      "id": "suresh",
+      "name": "Suresh Pillai",
+      "role": "Plant director",
+      "employer": "Gujarat Fluorochemicals",
+      "tenure": "2014–present",
+      "topics": [
+        "specialty chemicals",
+        "refrigerant gases",
+        "plant utilisation"
+      ],
+      "question": "What capacity-utilisation level does a new refrigerant-gas plant need to break even?",
+      "synthetic": true,
+      "education": [
+        "Institute of Chemical Technology, Mumbai"
+      ],
+      "employment": [
+        {
+          "employer": "SRF",
+          "role": "Production manager",
+          "start": "2008-01-01",
+          "end": "2013-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Gujarat Fluorochemicals",
+          "role": "Plant director",
+          "start": "2014-01-01",
+          "end": "",
+          "precision": "year"
+        }
+      ]
+    },
+    {
+      "id": "aditya",
+      "name": "Aditya Joshi",
+      "role": "Director, OSAT programmes",
+      "employer": "Tata Electronics",
+      "tenure": "2021–present",
+      "topics": [
+        "semiconductors",
+        "OSAT",
+        "electronics manufacturing"
+      ],
+      "question": "Which steps in chip assembly and test are realistically localised in India in the next three years?",
+      "synthetic": true,
+      "education": [
+        "Indian Institute of Technology, Bombay"
+      ],
+      "employment": [
+        {
+          "employer": "Texas Instruments India",
+          "role": "Design engineer",
+          "start": "2010-01-01",
+          "end": "2020-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "Tata Electronics",
+          "role": "Director, OSAT programmes",
+          "start": "2021-01-01",
+          "end": "",
+          "precision": "year"
+        }
+      ]
+    },
+    {
+      "id": "zoya",
+      "name": "Zoya Khan",
+      "role": "Head of US regulatory affairs",
+      "employer": "Sun Pharmaceutical Industries",
+      "tenure": "2014–2021",
+      "topics": [
+        "US FDA compliance",
+        "generics",
+        "pharmaceuticals"
+      ],
+      "question": "How long does an FDA warning letter typically delay new US launches?",
+      "synthetic": true,
+      "education": [
+        "Jamia Hamdard"
+      ],
+      "employment": [
+        {
+          "employer": "Sun Pharmaceutical Industries",
+          "role": "Head of US regulatory affairs",
+          "start": "2014-01-01",
+          "end": "2021-12-31",
+          "precision": "year"
+        }
+      ]
+    },
+    {
+      "id": "ritu",
+      "name": "Ritu Agarwal",
+      "role": "Head of EHV cables",
+      "employer": "KEI Industries",
+      "tenure": "2015–2023",
+      "topics": [
+        "cables",
+        "extra-high-voltage cables",
+        "power transmission"
+      ],
+      "question": "How are cable makers passing copper and aluminium costs to utility customers this year?",
+      "synthetic": true,
+      "education": [
+        "Punjab Engineering College"
+      ],
+      "employment": [
+        {
+          "employer": "KEI Industries",
+          "role": "Head of EHV cables",
+          "start": "2015-01-01",
+          "end": "2023-12-31",
+          "precision": "year"
+        }
+      ]
+    },
+    {
+      "id": "harsh",
+      "name": "Harsh Vora",
+      "role": "Channel sales head",
+      "employer": "Voltas",
+      "tenure": "2013–2021",
+      "topics": [
+        "air conditioning",
+        "consumer durables",
+        "channel inventory"
+      ],
+      "question": "How much room-AC inventory is sitting with dealers after this summer?",
+      "synthetic": true,
+      "education": [
+        "Narsee Monjee Institute of Management Studies"
+      ],
+      "employment": [
+        {
+          "employer": "Voltas",
+          "role": "Channel sales head",
+          "start": "2013-01-01",
+          "end": "2021-12-31",
+          "precision": "year"
+        },
+        {
+          "employer": "BLUESTARCO",
+          "role": "Senior manager, commercial refrigeration",
+          "start": "2008-01-01",
+          "end": "2012-12-31",
+          "precision": "year"
+        }
+      ]
+    },
+    {
+      "id": "nikhil",
+      "name": "Nikhil Jain",
+      "role": "Category head, sanitaryware",
+      "employer": "Kajaria Ceramics",
+      "tenure": "2016–2022",
+      "topics": [
+        "building products",
+        "sanitaryware",
+        "real estate demand"
+      ],
+      "question": "Which housing segments are driving sanitaryware demand outside the top cities?",
+      "synthetic": true,
+      "education": [
+        "Indian Institute of Management, Ahmedabad"
+      ],
+      "employment": [
+        {
+          "employer": "Kajaria Ceramics",
+          "role": "Category head, sanitaryware",
+          "start": "2016-01-01",
+          "end": "2022-12-31",
           "precision": "year"
         }
       ]
@@ -183,51 +960,148 @@
   "edges": [
     [
       "investor",
-      "mira"
+      "mira",
+      3
     ],
     [
       "investor",
-      "arjun"
+      "arjun",
+      2
     ],
     [
       "investor",
-      "leela"
+      "leela",
+      2
     ],
     [
       "investor",
-      "kabir"
+      "kabir",
+      3
     ],
     [
       "investor",
-      "sana"
+      "sana",
+      2
     ],
     [
       "investor",
-      "ira"
+      "ira",
+      1
     ],
     [
       "investor",
-      "neel"
+      "neel",
+      2
     ],
     [
       "investor",
-      "asha"
+      "asha",
+      3
     ],
     [
       "mira",
-      "tara"
+      "tara",
+      3
     ],
     [
       "arjun",
-      "dev"
+      "dev",
+      2
     ],
     [
       "kabir",
-      "rhea"
+      "rhea",
+      2
     ],
     [
       "leela",
-      "amit"
+      "amit",
+      1
+    ],
+    [
+      "investor",
+      "priya",
+      2
+    ],
+    [
+      "investor",
+      "farhan",
+      2
+    ],
+    [
+      "investor",
+      "deepa",
+      1
+    ],
+    [
+      "investor",
+      "gaurav",
+      2
+    ],
+    [
+      "investor",
+      "lakshmi",
+      1
+    ],
+    [
+      "investor",
+      "ananya",
+      2
+    ],
+    [
+      "investor",
+      "harsh",
+      1
+    ],
+    [
+      "asha",
+      "vikram",
+      2
+    ],
+    [
+      "kabir",
+      "nisha",
+      3
+    ],
+    [
+      "arjun",
+      "rohan",
+      2
+    ],
+    [
+      "sana",
+      "meera",
+      1
+    ],
+    [
+      "sana",
+      "karan",
+      3
+    ],
+    [
+      "neel",
+      "zoya",
+      2
+    ],
+    [
+      "leela",
+      "suresh",
+      2
+    ],
+    [
+      "gaurav",
+      "ritu",
+      1
+    ],
+    [
+      "harsh",
+      "nikhil",
+      2
+    ],
+    [
+      "ananya",
+      "aditya",
+      1
     ]
   ]
 }

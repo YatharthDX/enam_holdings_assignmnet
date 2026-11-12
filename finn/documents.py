@@ -154,6 +154,59 @@ def for_symbol(symbol, include_pages, include_revision=False):
         return result, [dict(p) for p in passages]
 
 
+FTS = [
+    "CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(body, content='pages', content_rowid='rowid', "
+    "tokenize='porter unicode61')",
+    "CREATE TRIGGER IF NOT EXISTS pages_fts_ai AFTER INSERT ON pages BEGIN "
+    "INSERT INTO pages_fts(rowid, body) VALUES (new.rowid, new.body); END",
+    "CREATE TRIGGER IF NOT EXISTS pages_fts_ad AFTER DELETE ON pages BEGIN "
+    "INSERT INTO pages_fts(pages_fts, rowid, body) VALUES('delete', old.rowid, old.body); END",
+    "CREATE TRIGGER IF NOT EXISTS pages_fts_au AFTER UPDATE ON pages BEGIN "
+    "INSERT INTO pages_fts(pages_fts, rowid, body) VALUES('delete', old.rowid, old.body); "
+    "INSERT INTO pages_fts(rowid, body) VALUES (new.rowid, new.body); END",
+]
+
+
+def ensure_fts(db):
+    """BM25 full-text index over pages, kept in step by triggers; backfilled once."""
+    if db.execute("SELECT 1 FROM sqlite_master WHERE name='pages_fts'").fetchone():
+        return
+    for sql in FTS:
+        db.execute(sql)
+    db.execute("INSERT INTO pages_fts(pages_fts) VALUES('rebuild')")
+
+
+def prepare_index():
+    """Backfill the full-text index for a database indexed before FTS existed."""
+    path = database_path()
+    if not path.is_file():
+        return
+    with closing(sqlite3.connect(path, timeout=15)) as db, db:
+        if db.execute("SELECT 1 FROM sqlite_master WHERE name='pages'").fetchone():
+            db.execute("BEGIN IMMEDIATE")
+            ensure_fts(db)
+
+
+def search(symbol, terms, limit=40):
+    """[(doc_id, page)] best-first by BM25, or None when no index exists yet."""
+    terms = [t for t in dict.fromkeys(re.findall(r"[a-z0-9]+", " ".join(terms).casefold())) if len(t) > 1][:24]
+    if not terms:
+        return []
+    path = database_path()
+    if not path.is_file():
+        return None
+    with closing(sqlite3.connect(path, timeout=10)) as db:
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE name='pages'").fetchone():
+            return None
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE name='pages_fts'").fetchone():
+            return None  # created by the importer or at startup; readers never take a write lock
+        query = " OR ".join('"' + t + '"' for t in terms)
+        rows = db.execute("""SELECT p.doc_id, p.page FROM pages_fts JOIN pages p ON p.rowid=pages_fts.rowid
+            JOIN documents d ON d.id=p.doc_id WHERE pages_fts MATCH ? AND d.symbol=?
+            ORDER BY bm25(pages_fts) LIMIT ?""", (query, symbol, limit)).fetchall()
+    return [(r[0], r[1]) for r in rows]
+
+
 def cached_index(symbol, kind, title, url, published="", max_age=INDEX_CACHE_SECONDS):
     """Reuse a recently checked exact source, without downloading it again."""
     doc_id = "local-" + hashlib.sha256((ticker(symbol) + "|" + source_url(url)).encode()).hexdigest()[:24]
@@ -234,6 +287,7 @@ def import_pdf(file, symbol, kind, title, url, published, *, progress=None):
         db.execute("CREATE TABLE IF NOT EXISTS document_parsers (doc_id TEXT PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,version TEXT NOT NULL)")
         db.execute("CREATE TABLE IF NOT EXISTS document_checked (doc_id TEXT PRIMARY KEY,at REAL NOT NULL)")
         db.execute("CREATE TABLE IF NOT EXISTS document_versions (doc_id TEXT NOT NULL,digest TEXT NOT NULL,metadata TEXT NOT NULL,PRIMARY KEY(doc_id,digest))")
+        ensure_fts(db)
         old = db.execute("SELECT digest, kind, title, published FROM documents WHERE id=?",
                          (doc_id,)).fetchone()
         db.execute("""INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?)

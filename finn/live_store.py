@@ -2,6 +2,7 @@
 import json
 import sqlite3
 import os
+import threading
 from contextlib import closing, contextmanager
 
 from .documents import database_path
@@ -36,6 +37,26 @@ DEFAULT_SETTINGS = {"enabled": True, "price_pct": 5.0, "volume_multiple": 2.0,
                     "categories": ["results", "M&A", "management_change", "litigation", "capex"]}
 
 
+_WAL = set()
+_WAL_LOCK = threading.Lock()
+
+
+def wal(db, path):
+    """Switch the file to WAL once per process; readers then never stall a writer's commit."""
+    key = str(path)
+    if key in _WAL:
+        return
+    with _WAL_LOCK:
+        if key in _WAL:
+            return
+        try:
+            if db.execute("PRAGMA journal_mode").fetchone()[0] != "wal":
+                db.execute("PRAGMA journal_mode=WAL")
+            _WAL.add(key)
+        except sqlite3.OperationalError:
+            pass  # another process holds the file; the next connection tries again
+
+
 @contextmanager
 def connection():
     path = database_path()
@@ -44,6 +65,13 @@ def connection():
         os.chmod(path, 0o600)
         db.row_factory = sqlite3.Row
         db.execute("PRAGMA busy_timeout=15000")
+        # WAL: page reads during a document import never hold up its commit.
+        wal(db, path)
+        for side in ("-wal", "-shm"):  # side files can hold private rows too
+            try:
+                os.chmod(path.with_name(path.name + side), 0o600)
+            except FileNotFoundError:
+                pass  # SQLite removes them when the last connection closes
         db.execute("PRAGMA foreign_keys=ON")
         db.execute("PRAGMA secure_delete=ON")
         for statement in SCHEMA:

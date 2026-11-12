@@ -35,7 +35,7 @@ def run(base_url="http://127.0.0.1:8080", *, expect_public_demo=False, timeout=1
 
     checks = []
     health = read("/health")
-    require(health.get("status") == "ok" and health.get("version") == "0.6.4", "Expected a healthy FINN 0.6.4 service.")
+    require(health.get("status") == "ok" and health.get("version") == "0.7.0", "Expected a healthy FINN 0.7.0 service.")
     checks.append("Health and release version")
     require(b"/assets/app.js" in read("/", html=True), "The application shell is unavailable.")
     checks.append("Browser application shell")

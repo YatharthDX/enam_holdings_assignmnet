@@ -73,7 +73,13 @@ def passages(symbol, as_of=None):
     groups = []
     for key, (title, terms) in THEMES.items():
         ranked = []
-        for page in pages:
+        candidates = pages
+        if kind == "indexed_originals":
+            best = documents.search(symbol, terms, limit=30)
+            if best:
+                keep = set(best)
+                candidates = [p for p in pages if (p["source"]["id"], p["source"]["page"]) in keep]
+        for page in candidates:
             body, lower = compact(page["text"]), page["text"].casefold()
             hits = [(lower.find(term), term) for term in terms if term in lower]
             if not hits:

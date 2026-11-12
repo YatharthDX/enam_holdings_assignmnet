@@ -56,14 +56,14 @@ class DeskTests(unittest.TestCase):
         contacts = desk.people(symbol="INFY")
         self.assertEqual(contacts[0]["path"], ["You", "Mira Shah"])
         self.assertEqual(contacts[1]["path"], ["You", "Mira Shah", "Tara Bose"])
-        self.assertEqual(contacts[2]["reason"], "Sector experience at Tata Consultancy Services")
+        self.assertEqual(contacts[2]["reason"], "Worked at Tata Consultancy Services, a competitor of Infosys")
         self.assertTrue(all(p["fictional"] for p in contacts))
 
     def test_direct_queries_match_only_relevant_people(self):
-        self.assertEqual([p["name"] for p in desk.people("Who in my network worked at SRF?")], ["Leela Nair"])
+        self.assertEqual([p["name"] for p in desk.people("Who in my network worked at SRF?")], ["Leela Nair", "Suresh Pillai"])
         self.assertEqual(len(desk.people("IT delivery")), 3)
         self.assertFalse(desk.people("aviation"))
-        self.assertEqual(len(desk.people()), 12)
+        self.assertEqual(len(desk.people()), len(desk.NETWORK["people"]))
 
     def test_search_limits_research_to_primary_documents(self):
         result = desk.research("infy", "constant currency")

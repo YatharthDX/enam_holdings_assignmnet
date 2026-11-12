@@ -82,7 +82,7 @@ def attachment(value):
     return urlunsplit((parts.scheme, parts.netloc.lower(), parts.path, parts.query, ""))
 
 
-def request_bytes(url, opener=None, limit=MAX_RESPONSE):
+def request_bytes(url, opener=None, limit=MAX_RESPONSE, timeout=12):
     client = opener or build_opener()
     request = Request(url, headers={
         "User-Agent": USER_AGENT, "Accept": "application/json, application/xml, text/xml, */*",
@@ -90,11 +90,14 @@ def request_bytes(url, opener=None, limit=MAX_RESPONSE):
                    "https://" + urlsplit(url).netloc + "/"
     })
     try:
-        with client.open(request, timeout=12) as response:
+        with client.open(request, timeout=timeout) as response:
             body = response.read(limit + 1)
     except HTTPError as exc:
         raise SourceError(f"Source returned HTTP {exc.code}.") from exc
     except (URLError, TimeoutError, OSError) as exc:
+        if "CERTIFICATE_VERIFY_FAILED" in str(exc):
+            raise SourceError("The source's HTTPS certificate could not be verified (often an incomplete "
+                              "certificate chain on the issuer's site). FINN does not bypass verification.") from exc
         raise SourceError("Source connection failed or timed out.") from exc
     if len(body) > limit:
         raise SourceError("Source response exceeded the size limit.")
@@ -200,6 +203,39 @@ def filings(companies, start, end):
         raise SourceError(f"NSE feed unavailable. API: {api_error} RSS: {exc}") from exc
 
 
+def nse_session():
+    """One cookie-carrying opener after the ordinary public page visit."""
+    opener = build_opener(HTTPCookieProcessor())
+    request_bytes(NSE_PAGE, opener)
+    return opener
+
+
+def nse_json(path, params, opener):
+    url = "https://www.nseindia.com/api/" + path + "?" + urlencode(params)
+    try:
+        return json.loads(request_bytes(url, opener))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise SourceError("NSE returned an unreadable response.") from exc
+
+
+def filings_by_symbol(companies, start, end, opener=None):
+    """Per-issuer announcement queries: bounded responses for any window length."""
+    opener = opener or nse_session()
+    rows, skipped, failed = [], 0, []
+    for symbol in sorted(companies):
+        try:
+            payload = nse_json("corporate-announcements", {
+                "index": "equities", "symbol": symbol,
+                "from_date": start.strftime("%d-%m-%Y"), "to_date": end.strftime("%d-%m-%Y")}, opener)
+            found, bad = parse_announcements(payload, {symbol: companies[symbol]})
+            rows.extend(found)
+            skipped += bad
+        except SourceError:
+            failed.append(symbol)
+    return {"rows": rows, "skipped": skipped, "failed": failed,
+            "coverage": "range" if not failed and not skipped else "partial"}
+
+
 def finite_number(value, positive=False):
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
         return None
@@ -249,6 +285,14 @@ def parse_chart(payload, symbol, now):
                                 "close": finite_number(close, positive=True), "volume": finite_number(volume),
                                 "split": day.isoformat() in splits}
     rows = [rows[key] for key in sorted(rows)]
+    # Yahoo sometimes leaves the final daily close empty while its quote metadata
+    # carries the settled price. Use it only when stamped after that session closed.
+    meta = data.get("meta", {})
+    settled, market_time = finite_number(meta.get("regularMarketPrice"), positive=True), finite_number(meta.get("regularMarketTime"))
+    if rows and rows[-1]["close"] is None and settled and market_time:
+        stamped = datetime.fromtimestamp(market_time, IST)
+        if stamped.date().isoformat() == rows[-1]["day"] and stamped.time() >= time(15, 25):
+            rows[-1]["close"] = settled
     if not rows or not any(row["close"] is not None for row in rows):
         raise SourceError("Yahoo returned no completed daily prices.")
     return rows

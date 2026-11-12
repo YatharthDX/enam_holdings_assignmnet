@@ -27,12 +27,45 @@ class DiscoveryTests(unittest.TestCase):
 
     def test_discovery_selects_primary_documents_and_verifies_ticker(self):
         links = discovery.parse_links(PAGE, "NEWCO", "https://www.screener.in/company/NEWCO/")
-        self.assertEqual([r["kind"] for r in links], ["annual_report", "transcript"])
+        # Locally the two latest annual reports are kept; transcripts are ordered by call month.
+        self.assertEqual([r["kind"] for r in links], ["annual_report", "annual_report", "transcript"])
         self.assertEqual([r["url"] for r in links],
-                         ["https://issuer.example/annual.pdf", "https://issuer.example/call.pdf"])
+                         ["https://issuer.example/annual.pdf", "https://issuer.example/old.pdf",
+                          "https://issuer.example/call.pdf"])
         self.assertIsNone(links[0]["published"])
+        self.assertEqual(links[2]["call_month"], "2026-10")
+        with patch.dict(os.environ, {"FINN_PUBLIC_DEMO": "1"}):
+            public = discovery.parse_links(PAGE, "NEWCO", "https://www.screener.in/company/NEWCO/")
+        self.assertEqual([r["kind"] for r in public], ["annual_report", "transcript"])
         with self.assertRaises(providers.SourceError):
             discovery.parse_links(PAGE, "DIFFERENT", "https://www.screener.in/company/NEWCO/")
+
+    def test_exchange_pdf_handlers_count_as_pdfs_and_newest_calls_win(self):
+        self.assertTrue(discovery.pdf_link("https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=abc.pdf"))
+        self.assertFalse(discovery.pdf_link("https://issuer.example/page.aspx?Pname=abc.pdf"))
+        calls = "".join(f'<li>{m} <a href="https://issuer.example/{i}.pdf">Transcript</a></li>'
+                        for i, m in enumerate(["Oct 2018", "Oct 2026", "Jan 2019", "Jul 2026"]))
+        page = PAGE.replace(b'<h3>Concalls</h3><ul>', b'<h3>Concalls</h3><ul>' + calls.encode())
+        links = discovery.parse_links(page, "NEWCO", "https://www.screener.in/company/NEWCO/")
+        months = [r["call_month"] for r in links if r["kind"] == "transcript"]
+        self.assertEqual(months[:3], ["2026-10", "2026-10", "2026-07"])
+
+    def test_symbol_can_be_verified_from_the_exchange_quote_link(self):
+        page = PAGE.replace(b">NSE: NEWCO</a>", b">Exchange quote</a>")
+        self.assertTrue(discovery.parse_links(page, "NEWCO", "https://www.screener.in/company/NEWCO/"))
+        with self.assertRaises(providers.SourceError):
+            discovery.parse_links(page, "NEW", "https://www.screener.in/company/NEW/")
+
+    def test_full_text_index_follows_page_replacement(self):
+        pdf = self.root / "fts.pdf"
+        make_pdf(pdf, ["Refrigerant gas capacity is being expanded at Dahej."])
+        documents.import_pdf(pdf, "NEWCO", "transcript", "Call", "https://issuer.example/fts.pdf", "")
+        self.assertEqual(len(documents.search("NEWCO", ["refrigerant"])), 1)
+        self.assertEqual(documents.search("NEWCO", ["aviation"]), [])
+        make_pdf(pdf, ["Aviation fuel demand is the new topic."])
+        documents.import_pdf(pdf, "NEWCO", "transcript", "Call", "https://issuer.example/fts.pdf", "")
+        self.assertEqual(documents.search("NEWCO", ["refrigerant"]), [])
+        self.assertEqual(len(documents.search("NEWCO", ["aviation"])), 1)
 
     def test_unseen_company_is_indexed_and_retry_does_not_duplicate(self):
         pdf = self.root / "original.pdf"
@@ -46,7 +79,7 @@ class DiscoveryTests(unittest.TestCase):
         job = discovery.status("NEWCO")
         self.assertEqual(job["status"], "complete")
         result = desk.research("NEWCO", "copper")
-        self.assertEqual(result["imported"], 2)
+        self.assertEqual(result["imported"], 3)
         self.assertEqual(result["matches"][0]["page"], 1)
         self.assertEqual(result["matches"][0]["date"], "Publication date unverified")
 
@@ -58,7 +91,7 @@ class DiscoveryTests(unittest.TestCase):
         token = discovery.begin("NEWCO")
         discovery.run("NEWCO", token, fetch=lambda u: PAGE if "screener" in u else b"<html>Access unavailable</html>", force=True)
         self.assertEqual(discovery.status("NEWCO")["status"], "error")
-        self.assertEqual(len(discovery.status("NEWCO")["sources"]), 2)
+        self.assertEqual(len(discovery.status("NEWCO")["sources"]), 3)
         self.assertTrue(desk.research("NEWCO", "semiconductor")["matches"])
 
     def test_active_job_and_private_links_are_rejected(self):

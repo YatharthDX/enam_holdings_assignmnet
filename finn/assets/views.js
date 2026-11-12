@@ -1,8 +1,8 @@
-import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js?v=0.6.4';
-import {modeSwitch, windowControls} from './live-view.js?v=0.6.4';
-import {analysisView} from './analysis-view.js?v=0.6.4';
-import {sourceBrief, dateFilter, reviewedResearch} from './research-view.js?v=0.6.4';
-import {identityForm, reconnectCards} from './network-view.js?v=0.6.4';
+import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js?v=0.7.0';
+import {modeSwitch, windowControls} from './live-view.js?v=0.7.0';
+import {analysisView} from './analysis-view.js?v=0.7.0';
+import {sourceBrief, dateFilter, reviewedResearch, promisesPanel} from './research-view.js?v=0.7.0';
+import {identityForm, reconnectCards} from './network-view.js?v=0.7.0';
 
 function rangeChart(series) {
   const forecasts = series.forecasts;
@@ -87,7 +87,7 @@ export function researchView(data,catalog,options = {}) {
   const job = data.discovery;
   const extracting = job?.sources?.find(s=>s.index_status==='extracting');
   const discovery = options.readOnly || data.as_of ? '' : `<section class="discovery-panel" aria-label="Document discovery">
-    <div><strong>Find primary documents</strong><p>Latest annual report and up to four call transcripts.</p></div>
+    <div><strong>Find primary documents</strong><p>Latest annual reports and up to eight call transcripts; their guidance is checked against filed results.</p></div>
     <div class="discovery-actions"><button type="button" id="discover-documents" class="button secondary" ${job?.status==='running'?'disabled':''}>${job?.status==='running'?'Indexing…':'Find documents'} ${icon('book',16)}</button>
     <button type="button" id="refresh-documents" class="text-button" ${job?.status==='running'?'disabled':''}>Refresh sources</button></div>
     <p id="discovery-status" class="discovery-status" role="status">${esc(job?.detail || 'Original documents are discovered via Screener’s public links.')}</p>
@@ -102,7 +102,7 @@ export function researchView(data,catalog,options = {}) {
     ${dateFilter(data)}<div class="company-heading"><div class="kicker">${esc(c.sector || 'Research index')}</div><h2>${esc(title)}</h2>
     ${data.snapshot?`<div class="section-meta">Historical business snapshot · FY24</div><p>${esc(data.snapshot.text)} ${sourceButton(data.snapshot.source,'Source')}</p>`:''}
     </div><div class="research-grid"><div class="stack">
-    ${data.comparison ? guidanceCard(data.comparison) : ''}${data.pending_guidance?.forecasts.length?`<section class="panel"><div class="section-meta">${esc(data.pending_guidance.period)} · Pending outcome at selected date</div><h2>Guidance available then</h2>${data.pending_guidance.forecasts.map(f=>`<p>${esc(f.label)} · ${rangeText(f)} ${sourceButton(f.source,'Source')}</p>`).join('')}<p class="coverage">The delivered outcome was not available by this date.</p></section>`:''}${sourceBrief(data,options.topic)}${reviewedResearch(data)}${data.sources.length?search:noDocs}${analysisView(data,options.aiOpen)}</div><aside class="stack">${network}${reconnectCards(data.reconnect)}
+    ${promisesPanel(data)}${data.comparison ? guidanceCard(data.comparison) : ''}${data.pending_guidance?.forecasts.length?`<section class="panel"><div class="section-meta">${esc(data.pending_guidance.period)} · Pending outcome at selected date</div><h2>Guidance available then</h2>${data.pending_guidance.forecasts.map(f=>`<p>${esc(f.label)} · ${rangeText(f)} ${sourceButton(f.source,'Source')}</p>`).join('')}<p class="coverage">The delivered outcome was not available by this date.</p></section>`:''}${sourceBrief(data,options.topic)}${reviewedResearch(data)}${data.sources.length?search:noDocs}${analysisView(data,options.aiOpen)}</div><aside class="stack">${network}${reconnectCards(data.reconnect)}
     ${data.sources.length && !data.comparison && !data.structured?.comparisons.length ? `<div class="note"><strong>Guidance coverage</strong><p>${data.as_of?'No comparable outcome is available by the selected date. Later and undated evidence is excluded.':'No comparable forecast and outcome have been reviewed for this ticker.'}</p></div>` : ''}</aside></div>`;
 }
 export function peopleView(data,query,symbol,catalog) {

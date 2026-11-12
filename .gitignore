@@ -6,3 +6,4 @@ __pycache__/
 finn-workspace*.json
 *.sqlite3*
 .DS_Store
+/question_files

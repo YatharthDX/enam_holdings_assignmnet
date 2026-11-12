@@ -61,7 +61,7 @@ export function sourceButton(source, label = 'View source', cls = 'text-button')
 }
 export function personCard(p) {
   const initials = p.name.split(' ').map(x => x[0]).join('');
-  const via = p.distance === 1 ? 'Direct contact' : 'Via ' + p.path[1];
+  const via = (p.distance === 1 ? 'Direct contact' : 'Via ' + p.path[1]) + (p.link ? ' · ' + p.link + ' link' : '');
   return `<button class="person" type="button" data-sheet="${register('person',p)}">
     <span class="avatar" aria-hidden="true">${esc(initials)}</span><span class="person-copy">
     <strong>${esc(p.name)}</strong><span>${esc(p.role)} · ${esc(p.company)}</span>
@@ -96,8 +96,9 @@ export function openSheet(id) {
     content = `<div class="kicker">${d.fictional?'Fictional demo contact':'Permissioned network profile'}</div><h2 id="sheet-title">${esc(d.name)}</h2>
       <p class="muted">${esc(d.role)} · ${esc(d.company)} · ${esc(d.tenure)}</p>
       <h3>Connection</h3><ol class="path">${d.path.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+      ${d.link?`<p class="coverage">Weakest link on this path: ${esc(d.link)}.${d.last_contact?' Last spoke '+esc(dateLabel(d.last_contact))+'.':''}</p>`:''}
       <h3>Experience</h3><p>${esc(d.topics.join(' · '))}</p>
-      ${d.employment?.length>1?`<details><summary>Employment history</summary>${d.employment.map(e=>`<p>${esc(e.role)} · ${esc(e.employer)} · ${esc(e.start||'Date unverified')}–${esc(e.end||'present')}</p>`).join('')}</details>`:''}
+      ${d.employment?.length>1?`<details open><summary>Employment history</summary>${d.employment.map(e=>`<p>${esc(e.role)} · ${esc(e.employer)} · ${esc(e.start||'Date unverified')}–${esc(e.end||'present')}</p>`).join('')}</details>`:''}
       ${d.education?.length?`<h3>Education</h3><p>${esc(d.education.join(' · '))}</p>`:''}
       <h3>A question to ask</h3><blockquote>${esc(d.question)}</blockquote>
       ${d.can_edit?`<details class="contact-notes"><summary>Private contact note</summary><form id="contact-note-form" class="stack"><input type="hidden" name="person" value="${esc(d.id)}"><input type="hidden" name="record" value="${esc(id)}"><label>Last contact<input type="date" name="last_contact" max="${new Date().toISOString().slice(0,10)}" value="${esc(d.last_contact||'')}"></label><label>Note<textarea name="note" rows="3" maxlength="2000">${esc(d.note||'')}</textarea></label><button type="submit" class="button secondary">Save private note</button><p id="contact-note-status" role="status"></p></form><button type="button" class="text-button" data-delete-person="${esc(d.id)}">Withdraw this profile and its links</button></details>`:''}`;

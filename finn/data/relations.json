@@ -1,0 +1,22 @@
+{
+  "_note": "A small curated map of competitors, suppliers and customers, used to suggest people who know a company from the outside.",
+  "INFY": {"competitors": ["TCS", "Wipro", "HCL Technologies", "Accenture"]},
+  "TCS": {"competitors": ["INFY", "Wipro", "HCL Technologies", "Accenture"]},
+  "LTTS": {"competitors": ["KPITTECH", "Tata Technologies", "Cyient"]},
+  "KPITTECH": {"competitors": ["LTTS", "Tata Technologies"], "customers": ["Cummins India", "Tata Motors"]},
+  "HDFCBANK": {"competitors": ["ICICI Bank", "Axis Bank", "Kotak Mahindra Bank"]},
+  "FEDERALBNK": {"competitors": ["Kotak Mahindra Bank", "Axis Bank", "South Indian Bank"]},
+  "SHRIRAMFIN": {"competitors": ["Cholamandalam Investment and Finance", "Bajaj Finance", "Mahindra Finance"]},
+  "DRREDDY": {"competitors": ["Sun Pharmaceutical Industries", "Cipla"]},
+  "SYNGENE": {"competitors": ["Aurigene Pharmaceutical Services", "Divi's Laboratories"]},
+  "AARTIIND": {"competitors": ["Deepak Nitrite", "Navin Fluorine International", "Atul"]},
+  "FINEORG": {"competitors": ["Deepak Nitrite", "Atul"]},
+  "SRF": {"competitors": ["Navin Fluorine International", "Gujarat Fluorochemicals", "Deepak Nitrite"]},
+  "SUPREMEIND": {"competitors": ["Astral", "Finolex Industries"]},
+  "POLYCAB": {"competitors": ["KEI Industries", "HAVELLS", "Finolex Cables"], "suppliers": ["Hindalco Industries"], "customers": ["POWERGRID", "TATAPOWER", "Sterlite Power"]},
+  "HAVELLS": {"competitors": ["POLYCAB", "Crompton Greaves Consumer Electricals", "Voltas"]},
+  "BLUESTARCO": {"competitors": ["Voltas", "Daikin India", "HAVELLS"]},
+  "CERA": {"competitors": ["Kajaria Ceramics", "Hindware", "Jaquar"]},
+  "TATAPOWER": {"competitors": ["Adani Power", "NTPC", "POWERGRID"], "suppliers": ["POLYCAB", "KEI Industries"]},
+  "POWERGRID": {"competitors": ["Sterlite Power", "Adani Energy Solutions", "TATAPOWER"], "suppliers": ["POLYCAB", "KEI Industries"]}
+}

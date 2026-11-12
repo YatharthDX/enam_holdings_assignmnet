@@ -1,8 +1,8 @@
-import {clearRecords, esc, nav, openSheet, route, getRecord, setWorkspaceAccess} from './ui.js?v=0.6.4';
-import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.6.4';
-import {liveBriefView} from './live-view.js?v=0.6.4';
-import {workspaceNotice, workspaceView} from './workspace-view.js?v=0.6.4';
-import {identityResult} from './network-view.js?v=0.6.4';
+import {clearRecords, esc, nav, openSheet, route, getRecord, setWorkspaceAccess} from './ui.js?v=0.7.0';
+import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.7.0';
+import {liveBriefView} from './live-view.js?v=0.7.0';
+import {workspaceNotice, workspaceView} from './workspace-view.js?v=0.7.0';
+import {identityResult} from './network-view.js?v=0.7.0';
 
 const workspace = document.querySelector('#workspace');
 const sheet = document.querySelector('#sheet');
@@ -68,6 +68,16 @@ function scheduleResearchPoll() {
   }, 4000);
 }
 
+let lastUnread = null;
+function notifyNewAlerts(unread) {
+  // Device notifications while FINN is open; background push needs a durable subscription store.
+  if (lastUnread!==null && unread>lastUnread && 'Notification' in window && Notification.permission==='granted') {
+    const fresh=unread-lastUnread;
+    new Notification('FINN', {body:`${fresh} new alert${fresh===1?'':'s'} under your rules`, icon:'/assets/icon.svg', tag:'finn-alerts'});
+  }
+  lastUnread=unread;
+}
+
 function schedulePoll() {
   clearTimeout(pollTimer);
   pollTimer = setTimeout(async () => {
@@ -75,6 +85,7 @@ function schedulePoll() {
     if (view!=='brief' || params.get('mode')==='replay') return;
     try {
       const current=await api('live/status');
+      notifyNewAlerts(current.unread);
       if (signature(current)!==liveSignature &&
           !userIsReading() &&
           !document.querySelector('#alert-rules[open]') &&
@@ -126,7 +137,7 @@ async function render() {
     const readOnly=Boolean(catalog.runtime?.read_only);
     setWorkspaceAccess(session.authenticated && !readOnly);
     if (readOnly && view==='brief' && !params.has('mode')) {
-      params.set('mode','replay');
+      params.set('mode','live');
       if (!params.has('window')) params.set('window','7d');
       destination=route('brief',Object.fromEntries(params));
       history.replaceState(null,'',destination);
@@ -249,6 +260,14 @@ document.addEventListener('click',event=>{
       target.disabled = false;
       const status = document.querySelector('#analysis-status');
       if (status) status.textContent = error.message;
+    });
+    return;
+  }
+  if (target.id==='notify-device') {
+    if (!('Notification' in window)) { target.textContent='Notifications are not supported in this browser'; return; }
+    Notification.requestPermission().then(state=>{
+      target.textContent = state==='granted' ? 'Notifications on for this device' : 'Notifications blocked in browser settings';
+      target.disabled = state==='granted';
     });
     return;
   }

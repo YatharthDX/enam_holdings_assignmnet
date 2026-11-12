@@ -1,7 +1,6 @@
 """Portfolio ranking, dated evidence comparisons and explicitly recorded connections."""
 import json
 import re
-from collections import defaultdict, deque
 from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -53,57 +52,11 @@ def all_companies():
     ]
 
 
-def connections():
-    adjacent = defaultdict(list)
-    for left, right in NETWORK["edges"]:
-        adjacent[left].append(right)
-        adjacent[right].append(left)
-    paths = {"investor": ["investor"]}
-    queue = deque(["investor"])
-    while queue:
-        person = queue.popleft()
-        if len(paths[person]) == 3:
-            continue
-        for neighbor in adjacent[person]:
-            if neighbor not in paths:
-                paths[neighbor] = paths[person] + [neighbor]
-                queue.append(neighbor)
-    return paths
-
-
-PATHS = connections()
 
 
 def people(query="", symbol=""):
-    from . import workspaces, network
-    if workspaces.current() is not None:
-        return network.people(query, symbol)
-    tokens = words(query)
-    company = COMPANIES.get(symbol.upper())
-    matches = []
-    for profile in PEOPLE.values():
-        path = PATHS.get(profile["id"])
-        if not path:
-            continue
-        employer = COMPANIES[profile["employer"]]
-        searchable = words(" ".join([profile["name"], profile["role"], employer["symbol"],
-                                      employer["name"], employer["sector"], *profile["topics"]]))
-        if tokens and not tokens.issubset(searchable):
-            continue
-        if query.strip() and not tokens:
-            continue
-        exact = company is not None and company["symbol"] == employer["symbol"]
-        sector = company is not None and company["sector"] == employer["sector"]
-        if symbol and not (exact or sector):
-            continue
-        path_names = ["You"] + [PEOPLE[person]["name"] for person in path[1:]]
-        reason = (f"Worked at {employer['name']}" if exact or not company else
-                  f"Sector experience at {employer['name']}")
-        result = {**profile, "company": employer["name"], "reason": reason, "path": path_names,
-                  "distance": len(path)-1, "fictional": True}
-        matches.append((not exact, len(path), profile["name"], result))
-    matches.sort(key=lambda item: item[:3])
-    return [entry[-1] for entry in matches]
+    from . import network
+    return network.people(query, symbol)
 
 
 def distance(actual, lower, upper):
@@ -193,6 +146,12 @@ def research(symbol, query=""):
                s["kind"] in {"Annual report", "Earnings call"}]
     tokens = words(query)
     records, indexed_pages = documents.for_symbol(symbol, include_pages=bool(tokens))
+    if tokens:
+        # BM25 narrows hundreds of report pages to the best candidates before snippet ranking.
+        best = documents.search(symbol, sorted(tokens))
+        if best is not None:
+            keep = set(best)
+            indexed_pages = [p for p in indexed_pages if (p["doc_id"], p["page"]) in keep]
     imported = {s["id"]: short_source(s) for s in records}
     passages = []
     for s in sources:

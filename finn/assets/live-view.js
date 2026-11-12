@@ -1,5 +1,5 @@
-import {dateLabel, empty, esc, heading, icon, personCard, route, sourceButton} from './ui.js?v=0.6.4';
-import {reconnectCards} from './network-view.js?v=0.6.4';
+import {dateLabel, empty, esc, heading, icon, personCard, route, sourceButton} from './ui.js?v=0.7.0';
+import {reconnectCards} from './network-view.js?v=0.7.0';
 
 export function modeSwitch(mode) {
   return `<div class="mode-switch" aria-label="Data mode">
@@ -37,15 +37,16 @@ function feedStatus(data) {
   const filing = data.sources.find(s=>s.key==='nse');
   const prices = data.sources.filter(s=>s.key.startsWith('yahoo:'));
   const successful = prices.filter(s=>s.status==='ok').length;
+  const snap = data.sources.find(s=>s.key==='snapshot');
   const coverage = filing?.status === 'error' ? 'Refresh failed' : filing?.coverage === 'partial' ? 'Partial coverage' :
-    filing?.status === 'ok' ? 'Range fetched' : 'Awaiting refresh';
+    filing?.status === 'ok' ? 'Range fetched' : snap ? 'Snapshot' : 'Awaiting refresh';
   return `<section class="feed-health" aria-label="Source status">
-    <div><strong>NSE filings</strong><span>${coverage}</span><small>${filing?.success?'Last success '+when(filing.success):'No successful fetch yet'}</small></div>
-    <div><strong>Price and volume</strong><span>${successful}/${data.holdings} ready</span><small>Completed daily sessions · Yahoo Finance</small></div>
+    <div><strong>NSE filings</strong><span>${coverage}</span><small>${filing?.success?'Last success '+when(filing.success):snap?'Taken '+when(snap.success):'No successful fetch yet'}</small></div>
+    <div><strong>Price and volume</strong><span>${successful||data.quotes.filter(q=>q.close!=null).length}/${data.holdings} ready</span><small>Completed daily sessions · Yahoo Finance</small></div>
     </section>
     <details class="source-health"><summary>Source details ${icon('down',14)}</summary>
       <p>Daily prices refresh after the closing-session buffer. Filing windows include fetched records. Check the source coverage before treating an empty window as complete.</p>
-      ${data.sources.length?data.sources.map(s=>`<div class="feed-detail"><strong>${esc(s.key==='nse'?'NSE announcements':s.key.slice(6))}</strong>
+      ${data.sources.length?data.sources.map(s=>`<div class="feed-detail"><strong>${esc(s.key==='nse'?'NSE announcements':s.key==='snapshot'?'Shipped snapshot':s.key.slice(6))}</strong>
       <span>${esc(s.status==='ok'?'Fetched':'Refresh failed')} · ${esc(when(s.attempt))}</span><p>${esc(s.detail)}</p></div>`).join(''):'<p>Refresh sources to fetch the portfolio’s latest records.</p>'}
     </details>`;
 }
@@ -66,15 +67,18 @@ function settingsForm(data, readOnly = false) {
       <fieldset><legend>Filing categories</legend><div class="category-options">${Object.entries(data.categories).map(([id,label])=>`<label class="check"><input type="checkbox" name="categories" value="${esc(id)}" ${s.categories.includes(id)?'checked':''}>${esc(label)}</label>`).join('')}</div></fieldset>
       <p class="coverage">Price uses absolute close-to-close change. Volume excludes the current session from its 20-session baseline. Saved rules also evaluate the latest cached session.</p>
       <div class="actions"><button class="button primary" type="submit">Save rules</button><span id="rules-result" role="status"></span></div>
+      <button type="button" class="text-button" id="notify-device" ${typeof Notification!=='undefined'&&Notification.permission==='granted'?'disabled':''}>${typeof Notification!=='undefined'&&Notification.permission==='granted'?'Notifications on for this device':'Notify me on this device'}</button>
+      <p class="coverage">Device notifications arrive while FINN is open or installed on the home screen.</p>
     </form></details>`;
 }
 
 function notifications(data, readOnly = false) {
   const unread=data.alerts.filter(a=>!a.seen).length;
   if (!data.alerts.length) return '';
-  return `<details class="panel notifications" id="alert-history"><summary>Alert history <b>${unread} unread</b> ${icon('down',16)}</summary>
-    <p class="panel-intro">Generated under your saved rules. Event times appear with each alert.</p>
-    ${readOnly ? '' : '<button type="button" class="text-button" id="alerts-read">Mark all read</button>'}
+  const preview=data.alerts.some(a=>a.preview);
+  return `<details class="panel notifications" id="alert-history" ${preview?'open':''}><summary>${preview?'Triggered alerts':'Alert history'} <b>${preview?data.alerts.length:unread+' unread'}</b> ${icon('down',16)}</summary>
+    <p class="panel-intro">${preview?'What the default rules raise over the last 7 days: material filings, daily moves of ±'+esc(data.settings.price_pct)+'% and volume above '+esc(data.settings.volume_multiple)+'× the 20-session average. Open your workspace to change the thresholds and keep a history.':'Generated under your saved rules. Event times appear with each alert.'}</p>
+    ${readOnly || preview ? '' : '<button type="button" class="text-button" id="alerts-read">Mark all read</button>'}
     ${data.alerts.map(a=>`<article class="notification ${a.seen?'':'unread'}"><div class="meta">${esc(a.symbol)} · ${esc(when(a.event_at))}</div><h3>${esc(a.title)}</h3><p>${esc(a.reason)}</p>
     ${sourceButton(a.source,'View source')} <a class="text-button" href="${route('people',{symbol:a.symbol})}">People ${icon('people',15)}</a></article>`).join('')}
     </details>`;
@@ -96,14 +100,70 @@ function market(data) {
 
 function liveRow(row) {
   return `<article class="filing-row"><div class="meta">${esc(row.symbol)} · ${esc(when(row.published))}</div>
-    <h3>${esc(row.title)}</h3><p>${esc(row.reason)}</p>${managementContext(row)}${sourceButton(row.source,'Open filing')}
+    <h3>${esc(row.headline||row.title)}</h3><p class="subject">${esc(row.title)}</p>
+    <p class="why">${esc(row.label)} · ${esc(row.reason)}</p>${enrichment(row)}${sourceButton(row.source,'Open filing')}
     ${row.other_sources?.length?`<details><summary>Other originals · ${row.other_sources.length}</summary>${row.other_sources.map(s=>sourceButton(s,'Open original')).join('')}</details>`:''}
     <a class="text-button" href="${route('people',{symbol:row.symbol})}">Connections ${icon('people',15)}</a></article>`;
 }
 
+function signed(value, unit='%') {
+  if (value == null) return '—';
+  const n = new Intl.NumberFormat('en-IN',{maximumFractionDigits:1}).format(Math.abs(value));
+  return `<span class="${value<0?'fall':'rise'}">${value<0?'−':'+'}${n}${unit}</span>`;
+}
+
+export function resultsCard(card) {
+  if (!card) return '';
+  const crore = v => v==null ? '—' : new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v);
+  const m = card.margin;
+  return `<div class="results-card"><div class="results-head"><strong>${esc(card.quarter)} · ${esc(card.scope)}</strong>
+    <span>QoQ vs ${esc(card.compared.qoq||'n/a')} · YoY vs ${esc(card.compared.yoy||'n/a')}</span></div>
+    <table><thead><tr><th scope="col">₹ crore</th><th scope="col">${esc(card.quarter)}</th><th scope="col">QoQ</th><th scope="col">YoY</th></tr></thead>
+    <tbody>${card.rows.map(r=>`<tr><th scope="row">${esc(r.label)}</th><td>${crore(r.value_cr)}</td><td>${signed(r.qoq)}</td><td>${signed(r.yoy)}</td></tr>`).join('')}</tbody></table>
+    ${m?`<p class="results-margin">${esc(m.label)} <b>${m.value.toFixed(1)}%</b> · ${signed(m.qoq_pp,' pp')} QoQ · ${signed(m.yoy_pp,' pp')} YoY</p>`:''}
+    <p class="coverage">${esc(card.definition)} ${sourceButton(card.source,'XBRL filing')}</p></div>`;
+}
+
+const CHANGE = {appointment:'Incoming', cessation:'Leaving', resignation:'Resigned'};
+
+function personChange(p) {
+  const career = (p.organisations||[]).map(o=>esc(o.name)+(o.since?` <small>since ${esc(o.since)}</small>`:'')).join(' · ');
+  const schooling = [...(p.education||[]), ...(p.degrees||[])].map(esc).join(' · ');
+  const ties = p.ties?.length ? `<div class="ties"><strong>Who in your network can speak to ${esc(p.name.split(' ')[0])}</strong>
+      ${p.ties.map(t=>`<div class="tie"><span class="strength ${esc(t.tie.strength)}">${esc(t.tie.strength)} link</span>${personCard(t)}<p>${esc(t.tie.reasons[0])}</p></div>`).join('')}</div>`
+    : p.change==='appointment' && (p.organisations?.length || p.education?.length) ? `<p class="coverage">No one in your recorded network overlaps with ${esc(p.name)}'s stated employers or schools.</p>` : '';
+  return `<div class="incoming"><div class="incoming-head"><span class="flag ${p.change==='appointment'?'':'muted-flag'}">${esc(CHANGE[p.change]||p.change)}</span>
+    <strong>${esc(p.name)}</strong>${p.role?`<span>${esc(p.role)}</span>`:''}</div>
+    ${career?`<p class="career"><b>Career</b> ${career}</p>`:''}${schooling?`<p class="career"><b>Education</b> ${schooling}</p>`:''}
+    ${p.profile?`<details class="profile"><summary>Profile from the filing${p.profile_from?' (from '+esc(p.profile_from)+')':''}</summary><blockquote>${esc(p.profile)}</blockquote></details>`:''}
+    ${p.you?.length?`<p class="you-tie"><b>You</b> ${p.you.map(esc).join(' ')}</p>`:''}${ties}</div>`;
+}
+
 function managementContext(row) {
   const context=row.management_context;
-  return context?`<div class="management-context"><strong>Incoming-person context · ${esc(context.status)}</strong><p>${esc(context.reason)}</p>${context.person?.distance?personCard(context.person):context.person?'<p>Employment matched; no introduction path is recorded.</p>':''}</div>`:'';
+  if (!context) return '';
+  if (!context.people?.length) {
+    if (row.rank>1) return '';
+    return `<div class="management-context"><strong>Who is changing · ${esc(context.status)}</strong><p>${esc(context.reason)}</p>${context.person?.distance?personCard(context.person):''}</div>`;
+  }
+  const ordered=[...context.people].sort((a,b)=>(a.change==='appointment'?0:1)-(b.change==='appointment'?0:1));
+  const anyTies=ordered.some(p=>p.ties?.length), anyProfile=ordered.some(p=>p.profile);
+  if (row.rank>1 && !anyTies && !anyProfile) {
+    return `<p class="named">${ordered.map(p=>`<b>${esc(p.name)}</b> ${esc((CHANGE[p.change]||p.change).toLowerCase())}${p.role?' · '+esc(p.role):''}`).join('; ')}</p>`;
+  }
+  return `<div class="management-context"><p class="context-lede">${esc(context.reason)}</p>${ordered.map(personChange).join('')}
+    <p class="coverage">Names and profiles are read from the company's own Regulation 30 disclosure. Network matches compare the stated employers and schools with your contacts' dated history.</p></div>`;
+}
+
+function contactLine(row) {
+  const c=row.contact;
+  if (!c) return '';
+  return `<div class="ask"><div class="ask-label">Best placed to explain this</div>${personCard(c)}
+    <p>${esc(c.reason)}. Ask: “${esc(c.question)}”</p></div>`;
+}
+
+function enrichment(row) {
+  return resultsCard(row.results_card) + managementContext(row) + contactLine(row);
 }
 
 export function liveBriefView(data, params, customOpen, {readOnly = false, autoRefresh = false} = {}) {
@@ -113,7 +173,7 @@ export function liveBriefView(data, params, customOpen, {readOnly = false, autoR
   const running=data.job?.status==='running';
   const unread = data.alerts.filter(alert => !alert.seen).length;
   const feature=lead?`<article class="lead"><div class="lead-copy"><div class="lead-meta"><span class="flag">${esc(lead.label)}</span><span>${esc(lead.symbol)} · ${esc(when(lead.published))}</span></div>
-    <h2>${esc(lead.title)}</h2><p>${esc(lead.details.slice(0,240)||lead.reason)}</p>${managementContext(lead)}
+    <h2>${esc(lead.company)}: ${esc(lead.headline||lead.title)}</h2><p class="subject">NSE subject: ${esc(lead.title)}</p><p class="why">${esc(lead.reason)}</p>${enrichment(lead)}
     <div class="actions">${sourceButton(lead.source,'Open filing','button primary')}
       <a class="button secondary" href="${route('research',{ticker:lead.symbol})}">Research index ${icon('arrow',16)}</a></div></div></article>`:'';
   const network=data.people.length?`<aside class="panel network-panel"><div class="section-meta">Network · ${esc(data.focus)}</div><h2>Who can help?</h2>
@@ -121,8 +181,8 @@ export function liveBriefView(data, params, customOpen, {readOnly = false, autoR
   return heading('Portfolio monitoring · '+dateLabel(data.as_of),'Portfolio brief','',
     `<a class="holdings-link" href="#portfolio">${icon('layers')} ${data.holdings} holdings</a>`)+
     `<div class="mode-actions">${modeSwitch('live')}${readOnly ? '<span class="meta">Read only</span>' : `<button id="live-refresh" aria-label="Refresh sources" class="button secondary" type="button" ${running?'disabled':''}>${running?'Refreshing…':'Refresh'}</button>`}</div>
-    <p class="live-status" id="live-status" role="status">${readOnly ? 'Open Historical replay for the prepared investor journey. A private workspace is needed to refresh sources.' : running?'Fetching public filings and completed daily bars…':data.job?.finished?'Last refresh finished '+when(data.job.finished):autoRefresh?'Scheduled source refresh is enabled.':'Select Refresh to fetch public filings and completed daily bars.'}</p>
-    ${data.alerts.length ? `<button type="button" class="text-button alert-jump" id="show-alerts">${unread} unread alerts ${icon('arrow',15)}</button>` : ''}
+    <p class="live-status" id="live-status" role="status">${data.snapshot_at ? 'Real NSE filings and Yahoo prices from a snapshot taken '+when(data.snapshot_at)+'. Windows count back from then'+(readOnly?'; open your workspace to fetch newer records.':'; Refresh fetches newer records.') : readOnly ? 'A private workspace is needed to refresh sources.' : running?'Fetching public filings and completed daily bars…':data.job?.finished?'Last refresh finished '+when(data.job.finished):autoRefresh?'Scheduled source refresh is enabled.':'Select Refresh to fetch public filings and completed daily bars.'}</p>
+    ${data.alerts.length ? `<button type="button" class="text-button alert-jump" id="show-alerts">${unread} ${data.alerts.some(a=>a.preview)?'triggered':'unread'} alerts ${icon('arrow',15)}</button>` : ''}
     ${feedStatus(data)}${windowControls(data,params,customOpen)}
     ${feature}${!data.rows.length?empty('No cached filings in this window','Check source status above, refresh, or choose a wider window. Historical replay is available from the selector.') : ''}
     <div class="lower-grid"><section class="panel"><div class="section-meta">Fetched portfolio disclosures</div><h2>Filing register</h2>

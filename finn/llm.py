@@ -218,7 +218,7 @@ def request_json(endpoint, payload, headers, selected, timeout=None):
         timeout = timeout_seconds() if payload is not None else 15
     request = Request(endpoint, data=json.dumps(payload).encode() if payload is not None else None,
                       method="POST" if payload is not None else "GET", headers={
-        "Content-Type": "application/json", "User-Agent": "FINN/0.6.4", **headers})
+        "Content-Type": "application/json", "User-Agent": "FINN/0.7.0", **headers})
     try:
         with build_opener(NoRedirect()).open(request, timeout=timeout) as response:
             raw = response.read(MAX_RESPONSE_BYTES + 1)
@@ -364,3 +364,45 @@ def generate(selected, selected_model, instructions, evidence, schema):
     body = post_json(GEMINI_ENDPOINT + selected_model + ":generateContent", payload,
                      {"x-goog-api-key": key(selected)}, selected)
     return normalize_gemini(body)
+
+
+BULK_ENV = {"openrouter": "FINN_OPENROUTER_BULK_MODEL", "gemini": "FINN_GEMINI_BULK_MODEL", "openai": "FINN_OPENAI_BULK_MODEL"}
+BULK_DEFAULT = {}  # unset: bulk calls use the configured model; set a *_BULK_MODEL to route cheaper
+
+
+def bulk_model(selected=None):
+    """Routing: high-volume extraction uses a cheaper model than reasoning tasks."""
+    selected = selected or provider()
+    value = os.environ.get(BULK_ENV[selected], "").strip() or BULK_DEFAULT.get(selected) or model(selected)
+    if not valid_model(selected, value):
+        raise ProviderError("The bulk extraction model must be a valid model identifier.")
+    return value
+
+
+def output_text(response):
+    pieces = []
+    for output in response.get("output", []):
+        if output.get("type") != "message":
+            continue
+        for part in output.get("content", []):
+            if part.get("type") == "refusal":
+                raise ProviderError("The model declined this request.")
+            if part.get("type") == "output_text":
+                pieces.append(part.get("text", ""))
+    return "".join(pieces)
+
+
+def structured(instructions, evidence, model_cls, *, tier="bulk"):
+    """One schema-constrained call; returns (validated object, actual model).
+
+    Callers must still verify every extracted string against the source text.
+    """
+    selected = provider()
+    chosen = bulk_model(selected) if tier == "bulk" else model(selected)
+    response = generate(selected, chosen, instructions, evidence, model_cls.model_json_schema())
+    if response.get("status") not in (None, "completed"):
+        raise ProviderError("The model did not finish.")
+    try:
+        return model_cls.model_validate_json(output_text(response)), response.get("_actual_model") or chosen
+    except ValueError:
+        raise ProviderError("The model response failed schema validation.") from None

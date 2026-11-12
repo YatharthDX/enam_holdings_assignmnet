@@ -1,73 +1,40 @@
-# Publish the phone demo
+# Deploying FINN
 
-The provided `render.yaml` requests one Free Docker web service, with **public interactive synthetic workspaces** and no model keys, paid database, disk or scheduler. Local persistent Docker remains the best development workspace. Public free-host state is ephemeral.
+## Render (free)
 
-## Check the integrated release locally
+`render.yaml` defines one free Docker web service in public interactive mode: anonymous visitors see the snapshot brief and research; **Open my workspace** creates an isolated 24-hour workspace for alert rules, holdings and contacts.
 
-Follow [UPGRADE_M6.md](UPGRADE_M6.md). Keep local flags:
+1. Push the repository to GitHub (`.env`, SQLite files and exports are git-ignored).
+2. In Render: **New → Blueprint** from the repo. Keep the Blueprint's environment values.
+3. Optional free AI: add `OPENROUTER_API_KEY` in the Render dashboard (never in the repo). Public generation stays bounded (3 starts per workspace/hour, 5/hour and 15/day globally, one at a time). Transcript guidance in public mode uses the rule pass, so a key is not needed for the core flows.
+4. After the deploy is healthy: `curl https://<service>.onrender.com/health` should report version `0.7.0`.
+5. Keep it warm: the `Keep demo warm` workflow pings `/health` every 10 minutes. Set the repository variable `FINN_DEMO_URL` if your URL differs.
 
-```dotenv
-FINN_PUBLIC_DEMO=0
-FINN_INTERACTIVE_DEMO=0
-FINN_TRUST_PROXY=0
-FINN_ENABLE_LLM=0
-```
+## Refreshing the shipped data
 
-Confirm `/health` version `0.6.4`. Run the container suite, smoke and `python -m finn.acceptance --sessions-only`. A fresh machine uses the normal Docker build from README; the cached-image override requires an existing compatible image.
-
-## Render Free
-
-1. Commit/push the full repository to public GitHub. Exclude `.env`, private exports, SQLite files and cached originals. Inspect the actual Actions run; configuration alone is not a passing run.
-2. In Render create a Blueprint from the repository/root `render.yaml`. Inspect the resource list: one Free web service, no paid add-ons. Keep the zero-spend route free of payment details; if the account cannot use Free without them, use the temporary option below.
-3. Keep `PORT=8080`, `FINN_PUBLIC_DEMO=1`, `FINN_INTERACTIVE_DEMO=1`, `FINN_TRUST_PROXY=1`, `FINN_ENABLE_LLM=0`, `FINN_AUTO_REFRESH=0`. Do not add model keys. The Blueprint sets these values. Render terminates HTTPS at its edge; the trusted-proxy flag lets cookie/origin validation use its forwarded HTTPS scheme.
-4. Wait for build/health success and copy the actual returned HTTPS URL. No deployment exists merely because the Blueprint is committed.
-5. Open that URL in a fresh browser. The initial view is the dated seven-day historical brief. Inspect the guidance/source/contact path, then **Open my workspace**. Check private note and alert controls. Another browser must not see that private note.
-6. Test generic document discovery if upstreams are accessible from the host. It is bounded to five starts/workspace/hour and 20 globally/hour. Manual live refresh is globally limited to once/15 minutes. Scheduled source acquisition remains disabled. Optional public synthesis is restricted to free-only OpenRouter, isolated workspaces and fixed global/per-workspace budgets. Configure its key in Render using [Render AI setup](UPGRADE_RENDER_AI.md); a key is not required for core workflows.
-7. Check `/health`: version `0.6.4`, public true; LLM true with both opt-in flags, or false when switched off. Run against the actual origin:
+The hosted service usually cannot reach NSE, so refresh the snapshot locally and redeploy:
 
 ```bash
-python -m finn.smoke --base-url https://YOUR-SERVICE.onrender.com --expect-public-demo --timeout 60
-python -m finn.acceptance --base-url https://YOUR-SERVICE.onrender.com --sessions-only
+python -m finn.snapshot build --days 50                      # filings, prices, XBRL, appointees
+python -m finn.snapshot build --days 50 --research LTTS,INFY  # choose which transcripts to read for guidance
+git add finn/data/snapshot.json && git commit -m "Refresh data snapshot" && git push
 ```
 
-The smoke command uses GETs. Session acceptance creates/erases only its disposable test workspaces; no discovery or model generation is requested. A cold-ticker test must be requested separately and needs working upstream access.
+With `FINN_ENABLE_LLM=1` and a key in `.env`, the build uses the model for guidance and appointee extraction and falls back to rules when the provider is unavailable or rate-limited. Without a key it uses rules only.
 
-To retain strict M5-style public read-only behavior, set `FINN_INTERACTIVE_DEMO=0`. All non-read HTTP methods are then rejected and session acceptance is intentionally unavailable.
-
-Free services can sleep after 15 minutes of inactivity and take time to wake. Their local filesystem can disappear on restart, redeployment or spin-down. Export useful private demo work before expiry/restart; do not place real contacts on this public host. Historical JSON evidence and fictional seeds ship with the image and survive a fresh start. No keep-alive automation is included.
-
-Provider eligibility/limits remain external. The Free plan has monthly service-hour/build/bandwidth limits; without a payment method the provider documents suspension/limits instead of supplementary charging. Recheck the actual account's resource plan before creation. No paid service is needed for this repository's core workflows.
-
-## Temporary HTTPS from the Mac
-
-Useful for same-day phone review while the Mac runs; it does not replace a stable submission URL.
-
-Stop any previous tunnel first. Recreate the container with:
-
-```dotenv
-FINN_PUBLIC_DEMO=1
-FINN_INTERACTIVE_DEMO=1
-FINN_TRUST_PROXY=1
-FINN_ENABLE_LLM=0
-FINN_AUTO_REFRESH=0
-```
-
-Install `cloudflared` from [Cloudflare's official downloads](https://developers.cloudflare.com/tunnel/downloads/), or use Homebrew on macOS:
+## Local
 
 ```bash
-brew install cloudflared
-cloudflared tunnel --url http://localhost:8090
+cp .env.example .env
+docker compose up --build --wait     # http://localhost:8090, scheduled refresh on
 ```
 
-Open the generated HTTPS URL on the phone. Keep Docker, the terminal and Mac running. Anyone with the link can inspect the public evidence and create a bounded fictional workspace. The address changes on the next tunnel; closing it stops access. Verify its HTTPS cookie/origin behavior before relying on private demo controls.
+On the same Wi-Fi a phone can open `http://<mac-ip>:8090`. For a temporary public HTTPS link: `cloudflared tunnel --url http://localhost:8090` with `FINN_PUBLIC_DEMO=1`, `FINN_INTERACTIVE_DEMO=1` and `FINN_TRUST_PROXY=1`.
 
-Stop the tunnel before returning to local mode; reset public/interactive/proxy flags to 0 and recreate the container. This flag switch does not erase stored workspaces by itself; their normal expiry still applies. Use a separate Docker project/data volume for a completely fresh public demo if the local workspace contains real private data.
+## Checks
 
-## Sources checked 10 November 2026
-
-- [Render Free limits](https://render.com/docs/free), [Docker deployment](https://render.com/docs/docker), [Blueprint specification](https://render.com/docs/blueprint-spec).
-- [Render web services and HTTPS termination](https://render.com/docs/web-services), [TLS](https://render.com/docs/tls).
-- [Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/), [downloads](https://developers.cloudflare.com/tunnel/downloads/).
-- [GitHub Actions billing](https://docs.github.com/en/actions/concepts/billing-and-usage). Standard public-repository hosted runners are free; private-repository allowances differ.
-
-No deployment, real upstream run or cloud-account action was performed merely by writing this guide.
+```bash
+docker compose exec -T app python -m unittest discover -s tests
+python -m finn.smoke --base-url https://<service>.onrender.com --expect-public-demo --timeout 60
+python -m finn.acceptance --base-url https://<service>.onrender.com --sessions-only
+```
