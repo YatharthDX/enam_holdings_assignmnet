@@ -72,7 +72,7 @@ class OpenRouterTests(unittest.TestCase):
                                              "max_price": {"prompt": 0, "completion": 0, "request": 0}})
         self.assertTrue(payload["response_format"]["json_schema"]["strict"])
         self.assertEqual(payload["response_format"]["json_schema"]["schema"], analysis.ResearchOutput.model_json_schema())
-        self.assertEqual(payload["max_tokens"], 8192); self.assertFalse(payload["stream"])
+        self.assertEqual(payload["max_tokens"], llm.OPENROUTER_MAX_TOKENS); self.assertFalse(payload["stream"])
         self.assertNotIn("tools", payload); self.assertNotIn("models", payload)
         for private in ("Mira Shah", "router-fixture-not-real", "workspace", "private note"):
             self.assertNotIn(private, json.dumps(payload))

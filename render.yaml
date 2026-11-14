@@ -22,6 +22,6 @@ services:
       - key: FINN_LLM_PROVIDER
         value: "openrouter"
       - key: FINN_OPENROUTER_MODEL
-        value: "openrouter/free"
+        value: "dots-studio/dots-3-note-preview:free"
       - key: FINN_AUTO_REFRESH
         value: "0"

@@ -30,7 +30,7 @@ function analysisBody(data) {
     ${a.provider==='openrouter'?`<p class="coverage">Free-only routing.${a.dynamic_model?' The free router selects an available compatible model; its reported model appears with the saved result.':''} Availability and quotas depend on OpenRouter.</p>`:''}
     ${a.public_limits ? `<p class="coverage">Shared demo: up to ${a.public_limits.workspace_per_hour} new readings per workspace/hour, ${a.public_limits.global_per_hour} across all visitors/hour and ${a.public_limits.global_per_day} across all visitors/24 hours. One request runs at a time. Saved readings do not use this allowance.</p>` : ''}
     <nav class="analysis-lenses" aria-label="Research lens">${a.lenses.map(l =>
-      `<a class="chip" href="${route('research',{ticker:data.company.symbol,lens:l.id,ai:'1'})}" ${l.id===a.lens?'aria-current="true"':''}>${esc(l.title)}</a>`).join('')}</nav>
+      `<a class="chip" href="${route('research',{ticker:data.company.symbol,lens:l.id,ai:'1',q:data.query,as_of:data.as_of})}" ${l.id===a.lens?'aria-current="true"':''}>${esc(l.title)}</a>`).join('')}</nav>
     <div class="analysis-coverage"><strong>${!ready ? 'No primary evidence yet' : historical ? 'Historical excerpt set' : 'Indexed originals'}</strong>
       <span>${a.coverage.documents_used} source${a.coverage.documents_used===1?'':'s'} · ${a.coverage.selected_passages} selected passage${a.coverage.selected_passages===1?'':'s'}</span></div>
     ${!finished ? `<p class="panel-intro">${esc(why)}</p>

@@ -15,6 +15,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 OPENAI_MODEL = "gpt-5.4-mini-2026-03-17"
 GEMINI_MODEL = "gemini-3.8-flash"
 OPENROUTER_MODEL = "openrouter/free"
+OPENROUTER_MAX_TOKENS = 32000
 OPENROUTER_API = "https://openrouter.ai/api/v1"
 OPENROUTER_ENDPOINT = OPENROUTER_API + "/chat/completions"
 OPENAI_ENDPOINT = "https://api.openai.com/v1/responses"
@@ -335,10 +336,14 @@ def generate(selected, selected_model, instructions, evidence, schema):
         raise ProviderError("Invalid model identifier.")
     text = json.dumps(evidence, ensure_ascii=False)
     if selected == "openrouter":
-        payload = {"model": selected_model, "stream": False, "max_tokens": 8192,
+        # Free reasoning models think for ~8-16k tokens before answering and ignore effort caps,
+        # so the budget must leave room for the answer after the thinking.
+        payload = {"model": selected_model, "stream": False, "max_tokens": OPENROUTER_MAX_TOKENS,
                    "messages": [{"role": "system", "content": instructions}, {"role": "user", "content": text}],
                    "response_format": {"type": "json_schema", "json_schema": {
                        "name": "finn_research", "strict": True, "schema": schema}},
+                   # Free reasoning models otherwise spend the whole budget thinking and never answer.
+                   "reasoning": {"effort": "low", "exclude": True},
                    "provider": {"require_parameters": True, "allow_fallbacks": False,
                                 "max_price": {"prompt": 0, "completion": 0, "request": 0}}}
         body = post_json(OPENROUTER_ENDPOINT, payload, {"Authorization": "Bearer " + key(selected),

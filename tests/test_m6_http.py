@@ -71,7 +71,7 @@ class FeatureHttpTests(unittest.TestCase):
         with patch('finn.app.discovery.run',side_effect=discover),patch('finn.llm.generate') as model:
             self.call(first,'/api/research/FRESHCO/discover',{},'POST')
             import time
-            deadline=time.monotonic()+3
+            deadline=time.monotonic()+15  # PDF parsing runs in a subprocess; slow CI runners need headroom
             while time.monotonic()<deadline:
                 info=self.call(first,'/api/research/FRESHCO')
                 if info['discovery']['status']=='complete':break

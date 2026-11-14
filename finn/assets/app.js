@@ -124,6 +124,19 @@ async function render() {
   let destination=location.hash || '#brief';
   const aiWasOpen=activeHash===destination && Boolean(document.querySelector('#optional-ai')?.open);
   let {view,params}=locationState();
+  // Switching a topic, lens or window on the same page keeps the reader where they were.
+  const [prevView,prevRaw='']=activeHash.slice(1).split('?');
+  const prev=new URLSearchParams(prevRaw), keepY=window.scrollY;
+  const samePage=Boolean(activeHash) && (prevView||'brief')===view &&
+    (prev.get('ticker')||'INFY')===(params.get('ticker')||'INFY') && (prev.get('mode')||'')===(params.get('mode')||'');
+  if (samePage && view==='research') {
+    // Choosing an option in one section never resets another section's choice.
+    let carried=false;
+    for (const key of ['topic','lens']) if (!params.has(key) && prev.get(key)) { params.set(key,prev.get(key)); carried=true; }
+    if (carried) { destination=route('research',Object.fromEntries(params)); history.replaceState(null,'',destination); }
+  }
+  const detailKey=d=>d.id||(d.querySelector(':scope>summary')?.textContent||'').replace(/[\d·,]+/g,'').trim().slice(0,60);
+  const detailState=samePage?new Map([...workspace.querySelectorAll('details')].map(d=>[detailKey(d),d.open])):null;
   sheet.close();
   nav(view);
   workspace.setAttribute('aria-busy','true');
@@ -170,12 +183,14 @@ async function render() {
     if (version!==revision) return;
     clearRecords();
     workspace.innerHTML=workspaceNotice(session)+draw();
+    // Expanded or collapsed panels stay as the reader left them.
+    if (detailState) workspace.querySelectorAll('details').forEach(d=>{const k=detailKey(d); if (detailState.has(k)) d.open=detailState.get(k);});
     const mode = view === 'research' ? 'Document index' : view === 'people' ? 'Professional network' :
       view === 'brief' && params.get('mode')!=='replay' ? 'Live sources' : 'Historical replay';
     document.querySelector('#mode-text').textContent = mode;
     document.title=(workspace.querySelector('h1')?.textContent || 'Portfolio brief')+' · YFINN';
     activeHash=destination;
-    window.scrollTo(0,scrollPositions.get(destination)||0);
+    window.scrollTo(0,samePage?keepY:(scrollPositions.get(destination)||0));
     if (view==='brief' && params.get('mode')!=='replay' && !readOnly) {
       if (lastNotice) document.querySelector('#live-status').textContent=lastNotice;
       lastNotice='';

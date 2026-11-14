@@ -10,7 +10,7 @@ export function sourceBrief(data, topic='business') {
   const passage=p=>`<article class="extractive-passage"><div class="meta">${esc(p.source.title)} · p. ${p.source.page}</div><p>${esc(p.text.length>420?p.text.slice(0,p.text.lastIndexOf(' ',420))+'…':p.text)}</p>${sourceButton(p.source,'Inspect full passage')}</article>`;
   return `<section class="panel source-brief"><div class="section-meta">${b.corpus==='historical_excerpts'?'Historical excerpts':'Indexed originals'} · ${b.documents} sources · ${b.pages} text pages</div>
     <h2>From the originals</h2><p class="panel-intro">Exact passages selected from company documents. No model needed.</p>
-    <nav class="chips" aria-label="Research topic">${b.groups.map(g=>`<a class="chip" href="${route('research',{ticker:data.company.symbol,topic:g.id,as_of:data.as_of})}" ${g.id===chosen.id?'aria-current="true"':''}>${esc(g.title)}</a>`).join('')}</nav>
+    <nav class="chips" aria-label="Research topic">${b.groups.map(g=>`<a class="chip" href="${route('research',{ticker:data.company.symbol,topic:g.id,as_of:data.as_of,q:data.query,lens:data.analysis?.lens})}" ${g.id===chosen.id?'aria-current="true"':''}>${esc(g.title)}</a>`).join('')}</nav>
     ${chosen.passages.length?passage(chosen.passages[0]):empty('No selected passage','This topic was not found by the retrieval rules. Search the source directly before concluding it was not disclosed.')}
     ${chosen.passages.length>1?`<details><summary>More source perspectives · ${chosen.passages.length-1}</summary>${chosen.passages.slice(1).map(passage).join('')}</details>`:''}
     <p class="coverage">${esc(b.method)}${b.excluded_pages?' '+b.excluded_pages+' undated or later pages excluded.':''}</p></section>`;
