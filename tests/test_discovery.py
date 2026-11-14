@@ -50,6 +50,15 @@ class DiscoveryTests(unittest.TestCase):
         months = [r["call_month"] for r in links if r["kind"] == "transcript"]
         self.assertEqual(months[:3], ["2026-10", "2026-10", "2026-07"])
 
+    def test_available_by_dates_are_never_earlier_than_release(self):
+        from datetime import date
+        today = date(2026, 11, 15)
+        self.assertEqual(discovery.available_by("transcript", "Oct 2026", today), "2026-11-10")
+        self.assertEqual(discovery.available_by("transcript", "Nov 2026", today), "")  # not yet safe
+        self.assertEqual(discovery.available_by("annual_report", "Annual Report 2025-26", today), "2026-09-30")
+        self.assertEqual(discovery.available_by("annual_report", "Annual Report FY2024-25", today), "2025-09-30")
+        self.assertEqual(discovery.available_by("annual_report", "Annual report", today), "")
+
     def test_symbol_can_be_verified_from_the_exchange_quote_link(self):
         page = PAGE.replace(b">NSE: NEWCO</a>", b">Exchange quote</a>")
         self.assertTrue(discovery.parse_links(page, "NEWCO", "https://www.screener.in/company/NEWCO/"))
@@ -81,7 +90,10 @@ class DiscoveryTests(unittest.TestCase):
         result = desk.research("NEWCO", "copper")
         self.assertEqual(result["imported"], 3)
         self.assertEqual(result["matches"][0]["page"], 1)
-        self.assertEqual(result["matches"][0]["date"], "Publication date unverified")
+        # Discovered originals carry a conservative "available by" date for point-in-time research.
+        expected = {discovery.available_by("transcript", "Oct 2026"), discovery.available_by("annual_report", "Annual Report 2026"),
+                    discovery.available_by("annual_report", "Annual Report 2025")}
+        self.assertIn(result["matches"][0]["date"], {d or "Publication date unverified" for d in expected})
 
     def test_failed_update_keeps_previous_documents_and_original_links(self):
         pdf = self.root / "original.pdf"

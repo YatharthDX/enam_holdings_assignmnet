@@ -33,6 +33,32 @@ def pdf_link(url):
     return (host == "bseindia.com" or host.endswith(".bseindia.com")) and parts.query.casefold().endswith(".pdf")
 
 
+def available_by(kind, label, today=None):
+    """A conservative 'known by' date for the point-in-time filter, never earlier than public release.
+
+    Transcripts: end of the call month + 10 days (transcripts follow calls within days).
+    Annual reports: 30 September of the report year (the AGM deadline, by which it must be out).
+    Empty when unknown or still in the future.
+    """
+    from calendar import monthrange
+    from datetime import date, timedelta
+    today = today or date.today()
+    if kind == "transcript":
+        month = call_month(label)
+        if not month:
+            return ""
+        year, mon = int(month[:4]), int(month[5:])
+        known = date(year, mon, monthrange(year, mon)[1]) + timedelta(days=10)
+    else:
+        # "2025-26" is the year ending March 2026: its report is out by September 2026.
+        ranges = [int(a[:2] + b) for a, b in re.findall(r"(?<!\d)((?:19|20)\d{2})\s*[-–/]\s*(\d{2})(?!\d)", label or "")]
+        years = ranges or [int(y) for y in re.findall(r"(?<!\d)(?:19|20)\d{2}(?!\d)", label or "")]
+        if not years:
+            return ""
+        known = date(max(years), 9, 30)
+    return known.isoformat() if known <= today else ""
+
+
 def call_month(label):
     match = re.search(r"\b([A-Za-z]{3})[a-z]*\s+((?:19|20)\d{2})\b", label or "")
     if not match or match.group(1).casefold() not in MONTHS:
@@ -171,6 +197,7 @@ def parse_links(body, symbol, page_url):
         title = label if kind == "annual_report" else period + " earnings-call transcript"
         found.append({"kind": kind, "url": url, "title": symbol + " · " + title,
                       "period_label": context, "published": None,
+                      "available_by": available_by(kind, period if kind == "transcript" else label),
                       "call_month": call_month(period) if kind == "transcript" else None})
         seen.add(url)
     from .runtime import public_demo
@@ -291,7 +318,8 @@ def _run(symbol, token, fetch=fetch_public, *, force=False):
                     owned = db.execute("SELECT 1 FROM document_jobs WHERE symbol=? AND token=? AND status='running'", (symbol, token)).fetchone()
                 if not owned:
                     return
-                cached = None if force else documents.cached_index(symbol, candidate["kind"], candidate["title"], candidate["url"])
+                cached = None if force else documents.cached_index(symbol, candidate["kind"], candidate["title"], candidate["url"],
+                                                                         candidate.get("available_by", ""))
                 if cached:
                     candidate.update(index_status="indexed", pages=cached["pages"], error=None,
                                      cached=True, checked_at=cached["checked_at"], elapsed_seconds=0)
@@ -314,7 +342,8 @@ def _run(symbol, token, fetch=fetch_public, *, force=False):
                         candidate.update(index_status="extracting", processed_pages=done, total_pages=total)
                         publish(label + f" — reading page {done} of {total}…")
                     _, pages, _ = documents.import_pdf(path, symbol, candidate["kind"], candidate["title"],
-                                                      candidate["url"], published="", progress=progress)
+                                                      candidate["url"], published=candidate.get("available_by", ""),
+                                                      progress=progress)
                     candidate.update(index_status="indexed", pages=pages, error=None,
                                      elapsed_seconds=round(time.monotonic() - started, 1))
                 indexed += 1

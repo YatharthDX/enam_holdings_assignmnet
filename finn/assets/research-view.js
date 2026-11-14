@@ -5,7 +5,8 @@ const label=value=>value.replaceAll('_',' ');
 
 export function sourceBrief(data, topic='business') {
   const r=data.structured, b=r?.brief;
-  if (!b?.documents) return data.as_of ? `<div class="note"><strong>No dated originals in the index by ${esc(data.as_of)}</strong><p>Undated originals are excluded from the extractive brief. Your reviewed facts retain dates you explicitly confirmed.</p></div>` : '';
+  // Only explain the date filter when it actually hid indexed documents.
+  if (!b?.documents) return data.as_of && data.imported ? `<div class="note"><strong>Nothing was public by ${esc(dateLabel(data.as_of))}</strong><p>Every indexed document for ${esc(data.company.symbol)} became available after this date. Pick a later date or show all evidence.</p></div>` : '';
   const chosen=b.groups.find(g=>g.id===topic)||b.groups[0];
   const passage=p=>`<article class="extractive-passage"><div class="meta">${esc(p.source.title)} · p. ${p.source.page}</div><p>${esc(p.text.length>420?p.text.slice(0,p.text.lastIndexOf(' ',420))+'…':p.text)}</p>${sourceButton(p.source,'Inspect full passage')}</article>`;
   return `<section class="panel source-brief"><div class="section-meta">${b.corpus==='historical_excerpts'?'Historical excerpts':'Indexed originals'} · ${b.documents} sources · ${b.pages} text pages</div>
