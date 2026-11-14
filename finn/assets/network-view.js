@@ -1,4 +1,4 @@
-import {esc,icon,personCard} from './ui.js?v=0.7.1';
+import {esc,icon,personCard} from './ui.js?v=0.8.0';
 
 export function identityForm() {
   return `<details class="panel identity-panel"><summary>Check a person's identity ${icon('down',16)}</summary><p class="panel-intro">A name alone cannot establish an introduction. Compare a recorded employer, role and tenure at the date of the event.</p>
@@ -10,5 +10,5 @@ export function identityResult(result) {
 }
 
 export function reconnectCards(items) {
-  return items?.length?`<section class="panel"><div class="section-meta">A reason to reconnect</div><h2>Keep the network warm</h2>${items.map(x=>`<p class="panel-intro">${esc(x.reason)}</p>${personCard(x.person)}`).join('')}<p class="coverage">Suggested conversation only; YFINN does not contact anyone.</p></section>`:'';
+  return items?.length?`<section class="panel"><div class="section-meta">A reason to reconnect</div><h2>Keep the network warm</h2>${items.map(x=>`<div class="reconnect">${personCard(x.person)}<p>${esc(x.reason)}</p></div>`).join('')}<p class="coverage">Suggested conversation only; YFINN does not contact anyone.</p></section>`:'';
 }

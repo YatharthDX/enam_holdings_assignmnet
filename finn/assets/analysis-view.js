@@ -1,4 +1,4 @@
-import {dateLabel, esc, icon, route, sourceButton} from './ui.js?v=0.7.1';
+import {dateLabel, esc, icon, route, sourceButton} from './ui.js?v=0.8.0';
 
 function usageLine(usage, saved = true) {
   if (!usage) return '';

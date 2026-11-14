@@ -111,6 +111,9 @@ def headline(row):
     text = " ".join(row.get("details", "").split())
     text = re.sub(r"^.{0,120}?\b(?:has|have)\s+(?:informed|submitted to)\s+the\s+Exchange,?\s*(?:about|regarding|that|on)?\s*", "", text)
     text = re.sub(r"^(?:the\s+)?(?:disclosure under regulation 30.{0,160}?-\s*)", "", text, flags=re.I)
+    # Keep the event, drop dates and legal tails: "... w.e.f. November 11, 2026" adds nothing to a headline.
+    text = re.split(r"\s+(?:w\.?\s?e\.?\s?f\.?|with effect from|pursuant to|under regulation|in terms of)\b", text, maxsplit=1, flags=re.I)[0]
+    text = re.sub(r"\s+of the (?:company|bank)\b", "", text, flags=re.I).rstrip(" ,.;-")
     if len(text) < 12 or re.fullmatch(r"(?:general )?updates?\.?", text, re.I):
         return row["title"]
     text = text[0].upper() + text[1:]

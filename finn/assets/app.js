@@ -1,8 +1,8 @@
-import {clearRecords, esc, nav, openSheet, route, getRecord, setWorkspaceAccess} from './ui.js?v=0.7.1';
-import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.7.1';
-import {liveBriefView} from './live-view.js?v=0.7.1';
-import {workspaceNotice, workspaceView} from './workspace-view.js?v=0.7.1';
-import {identityResult} from './network-view.js?v=0.7.1';
+import {clearRecords, esc, nav, openSheet, route, getRecord, setWorkspaceAccess} from './ui.js?v=0.8.0';
+import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.8.0';
+import {liveBriefView} from './live-view.js?v=0.8.0';
+import {workspaceNotice, workspaceView} from './workspace-view.js?v=0.8.0';
+import {identityResult} from './network-view.js?v=0.8.0';
 
 const workspace = document.querySelector('#workspace');
 const sheet = document.querySelector('#sheet');
@@ -185,8 +185,9 @@ async function render() {
     workspace.innerHTML=workspaceNotice(session)+draw();
     // Expanded or collapsed panels stay as the reader left them.
     if (detailState) workspace.querySelectorAll('details').forEach(d=>{const k=detailKey(d); if (detailState.has(k)) d.open=detailState.get(k);});
-    const mode = view === 'research' ? 'Document index' : view === 'people' ? 'Professional network' :
-      view === 'brief' && params.get('mode')!=='replay' ? 'Live sources' : 'Historical replay';
+    const mode = view === 'research' ? 'Company research' : view === 'people' ? 'Your network' :
+      view === 'portfolio' ? 'Holdings' : view === 'account' ? 'Workspace' :
+      params.get('mode')==='replay' ? 'Historical replay' : 'Live sources';
     document.querySelector('#mode-text').textContent = mode;
     document.title=(workspace.querySelector('h1')?.textContent || 'Portfolio brief')+' · YFINN';
     activeHash=destination;
@@ -209,6 +210,11 @@ async function render() {
 document.addEventListener('click',event=>{
   const target=event.target.closest('button, a, dialog');
   if (!target) return;
+  if (target.id==='hide-notice') {
+    try { sessionStorage.setItem('yfinn-notice','hidden'); } catch {}
+    target.closest('.workspace-notice')?.remove();
+    return;
+  }
   if (target.id==='open-workspace') {
     target.disabled=true;
     api('session',{}, {method:'POST'}).then(data=>{session={...data,runtime:session?.runtime};catalog=null;render();}).catch(error=>{

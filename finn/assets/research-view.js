@@ -1,4 +1,4 @@
-import {esc, dateLabel, route, sourceButton, empty} from './ui.js?v=0.7.1';
+import {esc, dateLabel, route, sourceButton, empty} from './ui.js?v=0.8.0';
 
 const option=(value,label,selected)=>`<option value="${esc(value)}" ${value===selected?'selected':''}>${esc(label)}</option>`;
 const label=value=>value.replaceAll('_',' ');
@@ -107,9 +107,10 @@ function filedQuarters(p) {
   const n=v=>v==null?'—':new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v);
   const pct=v=>v==null?'—':`<span class="${v<0?'fall':'rise'}">${v<0?'−':'+'}${Math.abs(v).toFixed(1)}%</span>`;
   const lender=p.card?.kind!=='industrial';
-  return `<details class="filed-quarters" open><summary>Filed quarters · ₹ crore · ${esc(p.card?.scope||'')}</summary><div class="market-scroll"><table class="market-table">
-    <thead><tr><th>Quarter</th><th>Revenue</th><th>YoY</th><th>${lender?'NII':'EBITDA %'}</th><th>PAT</th><th>YoY</th></tr></thead><tbody>
-    ${h.slice(-6).reverse().map(q=>`<tr><th>${esc(q.quarter)}</th><td>${n(q.revenue)}</td><td>${pct(yoy(q,'revenue'))}</td>
-      <td>${lender?n(q.core):q.core!=null&&q.revenue?(q.core/q.revenue*100).toFixed(1)+'%':'—'}</td><td>${n(q.pat)}</td><td>${pct(yoy(q,'pat'))}</td></tr>`).join('')}
+  const cell=(v,g)=>`<td>${n(v)}${g==null?'':`<small>${pct(g)}</small>`}</td>`;
+  return `<details class="filed-quarters" open><summary>Filed quarters · ₹ crore · ${esc(p.card?.scope||'')}</summary><div class="market-scroll"><table class="market-table quarters-table">
+    <thead><tr><th scope="col">Quarter</th><th scope="col">Revenue <small>YoY</small></th><th scope="col">${lender?'NII':'EBITDA %'}</th><th scope="col">PAT <small>YoY</small></th></tr></thead><tbody>
+    ${h.slice(-6).reverse().map(q=>`<tr><th scope="row">${esc(q.quarter)}</th>${cell(q.revenue,yoy(q,'revenue'))}
+      <td>${lender?n(q.core):q.core!=null&&q.revenue?(q.core/q.revenue*100).toFixed(1)+'%':'—'}</td>${cell(q.pat,yoy(q,'pat'))}</tr>`).join('')}
     </tbody></table></div>${p.card?`<p class="coverage">${sourceButton(p.card.source,'Latest XBRL filing')}</p>`:''}</details>`;
 }

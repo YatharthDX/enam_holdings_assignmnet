@@ -1,8 +1,8 @@
-import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js?v=0.7.1';
-import {modeSwitch, windowControls} from './live-view.js?v=0.7.1';
-import {analysisView} from './analysis-view.js?v=0.7.1';
-import {sourceBrief, dateFilter, reviewedResearch, promisesPanel} from './research-view.js?v=0.7.1';
-import {identityForm, reconnectCards} from './network-view.js?v=0.7.1';
+import {dateLabel, deltaText, empty, esc, heading, icon, personCard, rangeText, route, sourceButton} from './ui.js?v=0.8.0';
+import {modeSwitch, windowControls} from './live-view.js?v=0.8.0';
+import {analysisView} from './analysis-view.js?v=0.8.0';
+import {sourceBrief, dateFilter, reviewedResearch, promisesPanel} from './research-view.js?v=0.8.0';
+import {identityForm, reconnectCards} from './network-view.js?v=0.8.0';
 
 function rangeChart(series) {
   const forecasts = series.forecasts;
@@ -44,7 +44,7 @@ export function briefView(data, params, customOpen) {
     `<div class="mode-actions">${modeSwitch('replay')}</div>${windowControls(data,params,customOpen)}
     ${feature}${!data.rows.length ? empty('No filings in this sample window','Choose 7 days or a different date range in the historical replay.') : ''}
     <div class="lower-grid"><section class="panel"><div class="section-meta">${esc(data.start === data.end ? dateLabel(data.end) : dateLabel(data.start)+' – '+dateLabel(data.end))}</div>
-    <h2>Filing register</h2>${more}${lead?`<div class="register-entry"><span class="status-dot"></span><div><strong>${esc(lead.company)}</strong><small>Featured result · ${esc(dateLabel(lead.date))}</small></div>${sourceButton(lead.source,'Source')}</div>`:''}
+    <h2>Filing register</h2>${more}
     ${routine.length?`<details class="routine"><summary>Routine disclosures <b>${routine.length}</b> ${icon('down',15)}</summary>${routine.map(itemRow).join('')}</details>`:''}
     <p class="coverage">${icon('clock',14)} Curated filing sample · historical dates in IST.</p></section>${network}</div>`;
 }
@@ -119,5 +119,5 @@ export function peopleView(data,query,symbol,catalog) {
 export function portfolioView(catalog) {
   const holdings=catalog.companies.filter(c=>c.holding);
   return heading('Demo holdings','Your portfolio',holdings.length+' listed companies monitored by this workspace.')+
-    `${!catalog.runtime.read_only?`<details class="panel"><summary>Edit portfolio</summary><form id="portfolio-form" class="stack"><label>NSE symbols, separated by commas<textarea name="symbols" rows="3" required>${esc(holdings.map(c=>c.symbol).join(', '))}</textarea></label><p class="coverage">Up to 20 companies. Monitoring rules and holdings stay inside your workspace.</p><button class="button primary" type="submit">Save portfolio</button><p id="portfolio-status" role="status"></p></form></details>`:''}<div class="holdings-grid">${holdings.map(c=>`<a class="holding" href="${route('research',{ticker:c.symbol})}"><span class="meta">${esc(c.symbol)}</span><strong>${esc(c.name)}</strong><small>${esc(c.sector)}</small>${icon('arrow',16)}</a>`).join('')}</div>`;
+    `${!catalog.runtime.read_only?`<details class="panel"><summary>Edit portfolio</summary><form id="portfolio-form" class="stack"><label>NSE symbols, separated by commas<textarea name="symbols" rows="3" required>${esc(holdings.map(c=>c.symbol).join(', '))}</textarea></label><p class="coverage">Up to 20 companies. Monitoring rules and holdings stay inside your workspace.</p><button class="button primary" type="submit">Save portfolio</button><p id="portfolio-status" role="status"></p></form></details>`:''}<div class="holdings-grid">${holdings.map(c=>`<a class="holding" href="${route('research',{ticker:c.symbol})}"><span class="holding-copy"><strong>${esc(c.name)}</strong><small><span class="meta">${esc(c.symbol)}</span> · ${esc(c.sector)}</small></span>${icon('chevron',16)}</a>`).join('')}</div>`;
 }

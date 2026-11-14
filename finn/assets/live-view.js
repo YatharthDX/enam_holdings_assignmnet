@@ -1,5 +1,5 @@
-import {dateLabel, empty, esc, heading, icon, personCard, route, sourceButton} from './ui.js?v=0.7.1';
-import {reconnectCards} from './network-view.js?v=0.7.1';
+import {dateLabel, empty, esc, heading, icon, personCard, route, sourceButton} from './ui.js?v=0.8.0';
+import {reconnectCards} from './network-view.js?v=0.8.0';
 
 export function modeSwitch(mode) {
   return `<div class="mode-switch" aria-label="Data mode">
@@ -186,7 +186,6 @@ export function liveBriefView(data, params, customOpen, {readOnly = false, autoR
     ${feedStatus(data)}${windowControls(data,params,customOpen)}
     ${feature}${!data.rows.length?empty('No cached filings in this window','Check source status above, refresh, or choose a wider window. Historical replay is available from the selector.') : ''}
     <div class="lower-grid"><section class="panel"><div class="section-meta">Fetched portfolio disclosures</div><h2>Filing register</h2>
-      ${lead?`<div class="register-entry"><span class="status-dot"></span><div><strong>${esc(lead.company)}</strong><small>Featured disclosure</small></div>${sourceButton(lead.source,'Source')}</div>`:''}
       ${active.slice(1).map(liveRow).join('')}
       ${routine.length?`<details class="routine"><summary>Routine disclosures <b>${routine.length}</b> ${icon('down',15)}</summary>${routine.map(liveRow).join('')}</details>`:''}
       <p class="coverage">Publication times in IST. Last 24 hours is a rolling window.${data.filing_count>data.rows.length?' '+data.filing_count+' filings grouped into '+data.rows.length+' distinct metadata events.':''}</p></section>${network}</div>
