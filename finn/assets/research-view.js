@@ -17,9 +17,15 @@ export function sourceBrief(data, topic='business') {
 }
 
 export function dateFilter(data) {
+  // Point-in-time view: hides evidence published after a date, so research shows only what was known then.
   const today=new Date().toISOString().slice(0,10);
-  return `<form id="asof-form" class="asof-form"><label>Evidence available by<input type="date" name="as_of" max="${today}" value="${esc(data.as_of||'')}"></label>
-    <button class="button secondary" type="submit">Apply date</button>${data.as_of?`<a class="text-button" href="${route('research',{ticker:data.company.symbol})}">All indexed evidence</a>`:''}</form>`;
+  const active=data.as_of?`<span class="asof-active">${esc(dateLabel(data.as_of))}</span>`:'';
+  return `<details class="asof" id="asof" ${data.as_of?'open':''}><summary>View as of a past date ${active}</summary>
+    <p class="panel-intro">Hide documents published after this date to see only what was known then, without hindsight.</p>
+    <form id="asof-form" class="asof-form"><label for="asof-date">Date</label>
+      <div class="asof-row"><input id="asof-date" type="date" name="as_of" max="${today}" value="${esc(data.as_of||'')}" required>
+      <button class="button secondary" type="submit">Apply</button></div>
+      ${data.as_of?`<a class="text-button" href="${route('research',{ticker:data.company.symbol})}">Show all evidence</a>`:''}</form></details>`;
 }
 
 export function reviewedResearch(data) {

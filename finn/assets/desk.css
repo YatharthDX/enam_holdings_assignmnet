@@ -1905,3 +1905,15 @@ details[open] > summary .icon { transform: rotate(180deg); }
 }
 .profile summary { padding: 10px 0; min-height: 40px; }
 small { font-size: 13px; }
+
+/* Point-in-time filter: collapsed by default; field and button never overlap on phones. */
+.asof { margin: 14px 0 18px; }
+.asof > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; font-size: 14px; font-weight: 600; color: var(--link); }
+.asof-active { font-weight: 500; color: var(--on-lime); background: var(--lime); padding: 2px 8px; border-radius: 4px; font-size: 13px; }
+.asof .panel-intro { margin: 4px 0 10px; font-size: 14px; }
+.asof-form { display: grid; gap: 6px; margin: 0; max-width: 420px; }
+.asof-form label { font-size: 14px; }
+.asof-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: stretch; }
+.asof-row input { width: 100%; min-width: 0; -webkit-appearance: none; appearance: none; text-align: left; }
+.asof-row input::-webkit-date-and-time-value { text-align: left; }
+.asof-row .button { min-width: 88px; }
