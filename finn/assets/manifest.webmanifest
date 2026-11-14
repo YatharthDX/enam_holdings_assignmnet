@@ -1,6 +1,6 @@
 {
-  "name": "FINN investor desk",
-  "short_name": "FINN",
+  "name": "YFINN investor desk",
+  "short_name": "YFINN",
   "description": "Portfolio filings, promised vs delivered, and who in your network can explain it.",
   "start_url": "/#brief",
   "scope": "/",

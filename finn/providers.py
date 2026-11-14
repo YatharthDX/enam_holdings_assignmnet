@@ -97,7 +97,7 @@ def request_bytes(url, opener=None, limit=MAX_RESPONSE, timeout=12):
     except (URLError, TimeoutError, OSError) as exc:
         if "CERTIFICATE_VERIFY_FAILED" in str(exc):
             raise SourceError("The source's HTTPS certificate could not be verified (often an incomplete "
-                              "certificate chain on the issuer's site). FINN does not bypass verification.") from exc
+                              "certificate chain on the issuer's site). YFINN does not bypass verification.") from exc
         raise SourceError("Source connection failed or timed out.") from exc
     if len(body) > limit:
         raise SourceError("Source response exceeded the size limit.")

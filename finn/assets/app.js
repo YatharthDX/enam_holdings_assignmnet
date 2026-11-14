@@ -1,8 +1,8 @@
-import {clearRecords, esc, nav, openSheet, route, getRecord, setWorkspaceAccess} from './ui.js?v=0.7.0';
-import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.7.0';
-import {liveBriefView} from './live-view.js?v=0.7.0';
-import {workspaceNotice, workspaceView} from './workspace-view.js?v=0.7.0';
-import {identityResult} from './network-view.js?v=0.7.0';
+import {clearRecords, esc, nav, openSheet, route, getRecord, setWorkspaceAccess} from './ui.js?v=0.7.1';
+import {briefView, peopleView, portfolioView, researchView, verdict} from './views.js?v=0.7.1';
+import {liveBriefView} from './live-view.js?v=0.7.1';
+import {workspaceNotice, workspaceView} from './workspace-view.js?v=0.7.1';
+import {identityResult} from './network-view.js?v=0.7.1';
 
 const workspace = document.querySelector('#workspace');
 const sheet = document.querySelector('#sheet');
@@ -70,10 +70,10 @@ function scheduleResearchPoll() {
 
 let lastUnread = null;
 function notifyNewAlerts(unread) {
-  // Device notifications while FINN is open; background push needs a durable subscription store.
+  // Device notifications while YFINN is open; background push needs a durable subscription store.
   if (lastUnread!==null && unread>lastUnread && 'Notification' in window && Notification.permission==='granted') {
     const fresh=unread-lastUnread;
-    new Notification('FINN', {body:`${fresh} new alert${fresh===1?'':'s'} under your rules`, icon:'/assets/icon.svg', tag:'finn-alerts'});
+    new Notification('YFINN', {body:`${fresh} new alert${fresh===1?'':'s'} under your rules`, icon:'/assets/icon.svg', tag:'finn-alerts'});
   }
   lastUnread=unread;
 }
@@ -173,7 +173,7 @@ async function render() {
     const mode = view === 'research' ? 'Document index' : view === 'people' ? 'Professional network' :
       view === 'brief' && params.get('mode')!=='replay' ? 'Live sources' : 'Historical replay';
     document.querySelector('#mode-text').textContent = mode;
-    document.title=(workspace.querySelector('h1')?.textContent || 'Portfolio brief')+' · FINN';
+    document.title=(workspace.querySelector('h1')?.textContent || 'Portfolio brief')+' · YFINN';
     activeHash=destination;
     window.scrollTo(0,scrollPositions.get(destination)||0);
     if (view==='brief' && params.get('mode')!=='replay' && !readOnly) {
@@ -212,7 +212,7 @@ document.addEventListener('click',event=>{
     const source=candidate?.source || getRecord(target.dataset.reviewSource);
     const editor=document.querySelector('#fact-editor'), form=document.querySelector('#fact-form');
     if (source && editor && form) {
-      sheet.close();editor.open=true;
+      sheet.close();document.querySelector('#manual-review')?.setAttribute('open','');editor.open=true;
       form.elements.source_id.value=source.id;form.elements.page.value=source.page;
       form.elements.quote.value=(candidate?.quote||source.excerpt||'').replace(/^…|…$/g,'');
       form.elements.published.value=/^\d{4}-\d{2}-\d{2}$/.test(source.date)?source.date:'';

@@ -8,7 +8,7 @@ from . import desk, live, live_store as store, providers
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Refresh FINN's public data sources.")
+    parser = argparse.ArgumentParser(description="Refresh YFINN's public data sources.")
     choice = parser.add_mutually_exclusive_group(required=True)
     choice.add_argument("--once", action="store_true", help="Fetch portfolio filings and daily bars now")
     choice.add_argument("--status", action="store_true", help="Print the last refresh and source states")

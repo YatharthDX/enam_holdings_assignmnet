@@ -143,7 +143,7 @@ def require(request):
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         supplied = request.headers.get("x-finn-csrf", "")
         if not supplied or not hmac.compare_digest(session["csrf"], supplied):
-            raise HTTPException(403, "Refresh FINN before changing this workspace.")
+            raise HTTPException(403, "Refresh YFINN before changing this workspace.")
     return session["workspace"]
 
 

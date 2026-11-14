@@ -1,4 +1,4 @@
-# Deploying FINN
+# Deploying YFINN
 
 ## Render (free)
 
@@ -7,7 +7,7 @@
 1. Push the repository to GitHub (`.env`, SQLite files and exports are git-ignored).
 2. In Render: **New → Blueprint** from the repo. Keep the Blueprint's environment values.
 3. Optional free AI: add `OPENROUTER_API_KEY` in the Render dashboard (never in the repo). Public generation stays bounded (3 starts per workspace/hour, 5/hour and 15/day globally, one at a time). Transcript guidance in public mode uses the rule pass, so a key is not needed for the core flows.
-4. After the deploy is healthy: `curl https://<service>.onrender.com/health` should report version `0.7.0`.
+4. After the deploy is healthy: `curl https://<service>.onrender.com/health` should report version `0.7.1`.
 5. Keep it warm: the `Keep demo warm` workflow pings `/health` every 10 minutes. Set the repository variable `FINN_DEMO_URL` if your URL differs.
 
 ## Refreshing the shipped data

@@ -1,6 +1,6 @@
-# FINN architecture
+# YFINN architecture
 
-FINN is one FastAPI service with native JavaScript modules and SQLite, packaged as one Docker image. The design goal was the smallest system that does the real thing: real exchange data in, numbers computed in code, people and promises traced to the page they came from, and models used only where reading prose genuinely needs one.
+YFINN is one FastAPI service with native JavaScript modules and SQLite, packaged as one Docker image. The design goal was the smallest system that does the real thing: real exchange data in, numbers computed in code, people and promises traced to the page they came from, and models used only where reading prose genuinely needs one.
 
 ```mermaid
 flowchart TD
@@ -52,7 +52,7 @@ flowchart TD
 - **Ownership.** A signed, opaque, HttpOnly cookie identifies a workspace (only its hash is stored). Holdings, alert rules and history, contacts, edges, notes and reviewed facts are workspace-owned; queries are always filtered by the server-chosen owner; mutations require CSRF plus same-origin. Workspaces expire after 24 hours and can be exported or erased at any time; foreign keys cascade the deletion.
 - **What reaches a model.** Public filing and transcript text only. Holdings, contacts, notes and facts are never sent.
 - **Personal data stored.** For contacts: name, roles with dates, schools, topics, an optional private note and last-contact date. For people in filings: what the company itself disclosed. No phone numbers or emails are requested.
-- **Consent.** The public demo accepts fictional profiles only. Local imports of real profiles require an attested opt-in, an investment-research purpose, provenance and an expiry; expired consent removes the profile with its links and notes. FINN validates these records but cannot verify an attestation.
+- **Consent.** The public demo accepts fictional profiles only. Local imports of real profiles require an attested opt-in, an investment-research purpose, provenance and an expiry; expired consent removes the profile with its links and notes. YFINN validates these records but cannot verify an attestation.
 - **Storage.** SQLite with secure-delete; the database and its WAL side files are mode 0600. Access logs are off so names in query strings are not logged.
 - **Production next steps.** Real accounts (SSO) and organisation membership; Postgres with row-level security; encryption at rest with managed keys; backups with a ≤30-day deletion horizon; a consent ledger for imported profiles; a data-processing agreement with any model provider.
 

@@ -1,4 +1,4 @@
-# FINN
+# YFINN
 
 A mobile-first desk for an Indian-equity investor. It answers three questions through the day:
 
@@ -11,7 +11,7 @@ A mobile-first desk for an Indian-equity investor. It answers three questions th
 ## Try it in 90 seconds
 
 1. **Brief → 7 days.** Tata Power's appointment of its CEO-designate opens with his career *read from the filing's own Regulation 30 profile* (Tata Power Renewable Energy, Tata Power-DDL, NTPC, Reliance Energy since 1996). Underneath: two contacts whose dated careers overlap his, with the introduction path and link strength. Its Q2 FY27 results card shows Revenue, EBITDA, PBT and PAT, QoQ and YoY, computed from the company's XBRL filing.
-2. **Brief → Dates → 1 Oct–12 Nov.** HDFC Bank's new MD & CEO, Anup Bagchi: "ICICI Group since 1992", IIM Bangalore, IIT Kanpur. FINN notices that a close contact (Asha Das) was at ICICI Bank 2009–2016, that another sits one introduction away, and that you went to the same schools.
+2. **Brief → Dates → 1 Oct–12 Nov.** HDFC Bank's new MD & CEO, Anup Bagchi: "ICICI Group since 1992", IIM Bangalore, IIT Kanpur. YFINN notices that a close contact (Asha Das) was at ICICI Bank 2009–2016, that another sits one introduction away, and that you went to the same schools.
 3. **Research → INFY.** FY26 revenue guidance was raised three times (0–3% → 2–3% → 3–3.5%, constant currency); FY27's was lowered twice (1.5–3.5% → 1.5–3% → 1–2%). The 20–22% operating-margin band was delivered in FY26 (20.9% on filed figures) and is on track in FY27.
 4. **Research → LTTS.** "Mid-16% EBIT margin by Q4 FY27", repeated on call after call; the filed Q2 FY27 margin is already 16.3%. The FY25 "near 16%" promise came in at 14.9% on filed figures.
 5. **People.** Ask "specialty chemicals", or open POLYCAB: contacts at competitors and suppliers come with the reason they are relevant and how strong the link is.

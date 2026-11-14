@@ -1,1 +1,1 @@
-"""FINN investor desk."""
+"""YFINN investor desk."""

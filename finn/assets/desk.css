@@ -1731,3 +1731,8 @@ button:disabled {
 .revision-steps span { color:var(--muted);font-size:12px; }
 .revision-steps .text-button { font-size:12px; }
 .subject { font-size:12px;color:var(--muted);margin:2px 0 0; }
+.manual-review>summary { font-weight:600;cursor:pointer; }
+.manual-review>summary small,.step small { color:var(--muted);font-weight:400;margin-left:6px; }
+.manual-review .step { font-size:15px;margin:20px 0 6px; }
+.manual-review .fact-workbench { margin-top:8px; }
+.manual-review .fact-workbench>summary { cursor:pointer; }

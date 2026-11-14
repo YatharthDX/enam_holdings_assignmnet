@@ -26,7 +26,7 @@ def worker(source, output, progress, max_pages):
         import pypdfium2 as pdfium
         from pypdf import PdfReader
     except ImportError:
-        write_json(output, {"error": "The fast PDF parser is unavailable. Rebuild FINN with the updated requirements.txt."})
+        write_json(output, {"error": "The fast PDF parser is unavailable. Rebuild YFINN with the updated requirements.txt."})
         return
     try:
         # Preserve explicit encryption/page-count errors, using metadata only.
@@ -35,7 +35,7 @@ def worker(source, output, progress, max_pages):
                 raise ValueError("The PDF is encrypted. Use an unencrypted, text-searchable original.")
             total = len(probe.pages)
             if total > max_pages:
-                raise ValueError(f"The PDF has {total} pages; FINN supports at most {max_pages} pages per document.")
+                raise ValueError(f"The PDF has {total} pages; YFINN supports at most {max_pages} pages per document.")
         rows, characters = [], 0
         write_json(progress, [0, total])
         last = time.monotonic()
@@ -44,7 +44,7 @@ def worker(source, output, progress, max_pages):
                 with closing(document[index]) as page:
                     with closing(page.get_textpage()) as textpage:
                         if characters + textpage.count_chars() > MAX_TEXT_CHARS:
-                            raise ValueError("The PDF text exceeds FINN's 8-million-character indexing limit.")
+                            raise ValueError("The PDF text exceeds YFINN's 8-million-character indexing limit.")
                         # Include text outside the CropBox too; a default page-box
                         # extraction silently clips long lines in some originals.
                         body = " ".join(textpage.get_text_bounded(
@@ -53,7 +53,7 @@ def worker(source, output, progress, max_pages):
                 if body:
                     characters += len(body)
                     if characters > MAX_TEXT_CHARS:
-                        raise ValueError("The PDF text exceeds FINN's 8-million-character indexing limit.")
+                        raise ValueError("The PDF text exceeds YFINN's 8-million-character indexing limit.")
                     rows.append([index + 1, body])
                 if (index + 1) % 25 == 0 or index + 1 == total or time.monotonic() - last >= 1:
                     write_json(progress, [index + 1, total])

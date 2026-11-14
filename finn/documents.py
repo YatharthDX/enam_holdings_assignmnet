@@ -245,7 +245,7 @@ def import_pdf(file, symbol, kind, title, url, published, *, progress=None):
     if not path.is_file() or path.stat().st_size == 0:
         raise ValueError("The PDF file is empty or unavailable.")
     if path.stat().st_size > max_bytes:
-        raise ValueError(f"The PDF exceeds FINN's {max_bytes // (1024*1024)} MiB file-size limit.")
+        raise ValueError(f"The PDF exceeds YFINN's {max_bytes // (1024*1024)} MiB file-size limit.")
     raw = path.read_bytes()
     if b"%PDF-" not in raw[:1024]:
         raise ValueError("The source is not a PDF original.")

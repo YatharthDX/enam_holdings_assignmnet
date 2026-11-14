@@ -93,7 +93,7 @@ def response_error(body, code, selected):
     messages = {
         400: "The provider rejected the request. The cause is not established without a more specific code.",
         401: "The provider rejected authentication. Check the selected server-side API key.",
-        402: "The provider reports a credit or account limit. FINN's OpenRouter integration permits free models only; inspect the selected free model and account limits.",
+        402: "The provider reports a credit or account limit. YFINN's OpenRouter integration permits free models only; inspect the selected free model and account limits.",
         403: "The provider denied access. Check API/key restrictions and model permissions.",
         404: "The model or API resource is unavailable for this project.",
         429: "A rate or project quota limit was reached. Check quota or wait for reset; keep billing disabled for zero spend.",
@@ -218,12 +218,12 @@ def request_json(endpoint, payload, headers, selected, timeout=None):
         timeout = timeout_seconds() if payload is not None else 15
     request = Request(endpoint, data=json.dumps(payload).encode() if payload is not None else None,
                       method="POST" if payload is not None else "GET", headers={
-        "Content-Type": "application/json", "User-Agent": "FINN/0.7.0", **headers})
+        "Content-Type": "application/json", "User-Agent": "FINN/0.7.1", **headers})
     try:
         with build_opener(NoRedirect()).open(request, timeout=timeout) as response:
             raw = response.read(MAX_RESPONSE_BYTES + 1)
             if len(raw) > MAX_RESPONSE_BYTES:
-                raise ProviderError(label + " response exceeded FINN's size limit.")
+                raise ProviderError(label + " response exceeded YFINN's size limit.")
             body = json.loads(raw)
             if not isinstance(body, dict):
                 raise ProviderError(label + " returned an invalid response object.")
@@ -281,7 +281,7 @@ def normalize_gemini(body):
 
 
 def normalize_openrouter(body):
-    """Map visible chat output/usage to FINN's verifier; discard reasoning text."""
+    """Map visible chat output/usage to YFINN's verifier; discard reasoning text."""
     choices = body.get("choices")
     if not isinstance(choices, list) or len(choices) != 1 or not isinstance(choices[0], dict):
         raise ProviderError("OpenRouter returned no single usable answer.", "INVALID_RESPONSE")
@@ -342,7 +342,7 @@ def generate(selected, selected_model, instructions, evidence, schema):
                    "provider": {"require_parameters": True, "allow_fallbacks": False,
                                 "max_price": {"prompt": 0, "completion": 0, "request": 0}}}
         body = post_json(OPENROUTER_ENDPOINT, payload, {"Authorization": "Bearer " + key(selected),
-                                                     "X-OpenRouter-Title": "FINN"}, selected)
+                                                     "X-OpenRouter-Title": "YFINN"}, selected)
         return normalize_openrouter(body)
     if selected == "openai":
         payload = {"model": selected_model, "store": False, "max_output_tokens": 3500,

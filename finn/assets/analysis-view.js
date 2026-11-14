@@ -1,4 +1,4 @@
-import {dateLabel, esc, icon, route, sourceButton} from './ui.js?v=0.7.0';
+import {dateLabel, esc, icon, route, sourceButton} from './ui.js?v=0.7.1';
 
 function usageLine(usage, saved = true) {
   if (!usage) return '';
@@ -18,7 +18,7 @@ function analysisBody(data) {
   const ready = a.coverage.selected_passages > 0;
   const finished = job?.status === 'complete';
   const title = a.lenses.find(l => l.id === a.lens)?.title;
-  const why = !a.configured ? (a.public_demo ? 'Optional AI is awaiting server configuration. Core research remains available.' : `Add ${a.key_env} to .env, then restart FINN. Provider setup steps are in README.md.`) :
+  const why = !a.configured ? (a.public_demo ? 'Optional AI is awaiting server configuration. Core research remains available.' : `Add ${a.key_env} to .env, then restart YFINN. Provider setup steps are in README.md.`) :
     !ready ? 'Choose Find documents above to index primary sources for this ticker.' :
     historical ? 'This lens will analyze the curated historical excerpts. Find documents for a fresh document review.' :
     'Generate a concise reading of the indexed annual report and call transcripts.';
@@ -43,9 +43,9 @@ function analysisBody(data) {
       ${result.gaps.length ? `<details class="analysis-gaps" open><summary>Evidence gaps & limits</summary><ul>${result.gaps.map(g => `<li>${esc(g)}</li>`).join('')}</ul></details>` : ''}
       <p class="coverage">${esc(result.verification)}</p>${usageLine(job.usage)}</div>` : job?.usage ? usageLine(job.usage, false) : ''}
     <details class="analysis-method"><summary>Sources, privacy & usage</summary>
-      <p>${esc(a.coverage.note)}</p><p>On your request, selected public document passages go to ${esc(a.provider_label)}. Your portfolio and fictional contacts stay in FINN. Results are generated only when you press Analyze documents or Retry analysis.</p>
-      <p>One request per new lens, provider, model and document revision. FINN never switches providers after an error. Quotes and numerical literals are checked; the model’s interpretation still needs your judgment.</p>
-      <p>${a.provider === 'openrouter' ? 'FINN accepts openrouter/free or a model ID ending in :free, requests zero-priced endpoints and requires JSON-schema support. OpenRouter and its selected model provider process the public passages under their respective policies. Paid model IDs and automatic fallback are disabled. A free endpoint may still be unavailable or quota-limited.' : a.provider === 'gemini' ? 'Gemini’s free tier has quotas and depends on your Google project plan. FINN cannot verify that billing is disabled. Free-tier content may be used to improve Google’s products; only public document passages are sent.' : 'OpenAI token costs are estimates using the listed pricing date, excluding taxes. Requests disable response storage with store: false; provider retention policies still apply.'}</p></details>
+      <p>${esc(a.coverage.note)}</p><p>On your request, selected public document passages go to ${esc(a.provider_label)}. Your portfolio and fictional contacts stay in YFINN. Results are generated only when you press Analyze documents or Retry analysis.</p>
+      <p>One request per new lens, provider, model and document revision. YFINN never switches providers after an error. Quotes and numerical literals are checked; the model’s interpretation still needs your judgment.</p>
+      <p>${a.provider === 'openrouter' ? 'YFINN accepts openrouter/free or a model ID ending in :free, requests zero-priced endpoints and requires JSON-schema support. OpenRouter and its selected model provider process the public passages under their respective policies. Paid model IDs and automatic fallback are disabled. A free endpoint may still be unavailable or quota-limited.' : a.provider === 'gemini' ? 'Gemini’s free tier has quotas and depends on your Google project plan. YFINN cannot verify that billing is disabled. Free-tier content may be used to improve Google’s products; only public document passages are sent.' : 'OpenAI token costs are estimates using the listed pricing date, excluding taxes. Requests disable response storage with store: false; provider retention policies still apply.'}</p></details>
   </section>`;
 }
 

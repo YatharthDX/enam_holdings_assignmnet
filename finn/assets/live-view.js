@@ -1,5 +1,5 @@
-import {dateLabel, empty, esc, heading, icon, personCard, route, sourceButton} from './ui.js?v=0.7.0';
-import {reconnectCards} from './network-view.js?v=0.7.0';
+import {dateLabel, empty, esc, heading, icon, personCard, route, sourceButton} from './ui.js?v=0.7.1';
+import {reconnectCards} from './network-view.js?v=0.7.1';
 
 export function modeSwitch(mode) {
   return `<div class="mode-switch" aria-label="Data mode">
@@ -68,7 +68,7 @@ function settingsForm(data, readOnly = false) {
       <p class="coverage">Price uses absolute close-to-close change. Volume excludes the current session from its 20-session baseline. Saved rules also evaluate the latest cached session.</p>
       <div class="actions"><button class="button primary" type="submit">Save rules</button><span id="rules-result" role="status"></span></div>
       <button type="button" class="text-button" id="notify-device" ${typeof Notification!=='undefined'&&Notification.permission==='granted'?'disabled':''}>${typeof Notification!=='undefined'&&Notification.permission==='granted'?'Notifications on for this device':'Notify me on this device'}</button>
-      <p class="coverage">Device notifications arrive while FINN is open or installed on the home screen.</p>
+      <p class="coverage">Device notifications arrive while YFINN is open or installed on the home screen.</p>
     </form></details>`;
 }
 

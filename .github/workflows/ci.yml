@@ -1,4 +1,4 @@
-name: FINN checks
+name: YFINN checks
 
 on:
   push:

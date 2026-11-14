@@ -39,7 +39,7 @@ async def lifespan(application):
             refresher.stop()
 
 
-app = FastAPI(title="FINN investor desk", version="0.7.0", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(title="YFINN investor desk", version="0.7.1", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/assets", StaticFiles(directory=WEB), name="assets")
 
 
@@ -70,7 +70,7 @@ async def public_demo_boundary(request, call_next):
         return JSONResponse(status_code=413, content={"detail": "Keep request bodies within 256 KiB."})
     if runtime.public_demo() and not runtime.interactive() and request.method not in {"GET", "HEAD", "OPTIONS"}:
         return JSONResponse(status_code=403, content={"detail":
-            "This public demo is read-only. Run FINN locally to index documents, change alerts or enable optional AI."})
+            "This public demo is read-only. Run YFINN locally to index documents, change alerts or enable optional AI."})
     if not request.url.path.startswith("/api/"):
         return await call_next(request)
     with live_store.connection() as db:
@@ -94,7 +94,7 @@ def index():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "mode": "live_and_replay", "version": "0.7.0", "llm_enabled": llm.enabled(),
+    return {"status": "ok", "mode": "live_and_replay", "version": "0.7.1", "llm_enabled": llm.enabled(),
             "public_demo": runtime.public_demo(), "interactive_demo": runtime.interactive()}
 
 
@@ -318,7 +318,7 @@ def same_origin(request):
     if https_request(request) and expected.startswith("http://"):
         expected = "https://" + expected[7:]
     if origin and origin.rstrip("/") != expected:
-        raise HTTPException(403, "Open FINN on the same origin to change its demo settings.")
+        raise HTTPException(403, "Open YFINN on the same origin to change its demo settings.")
 
 
 def https_request(request):

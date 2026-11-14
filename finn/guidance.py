@@ -312,7 +312,7 @@ def actual(metric, period, card):
         if not labels:
             return None, f"No {period} quarter has been reported yet."
         if labels[0] != f"Q1 FY{year:02d}":
-            return None, f"{period} quarters before {labels[0][:2]} predate the XBRL history FINN reads."
+            return None, f"{period} quarters before {labels[0][:2]} predate the XBRL history YFINN reads."
         prior = [f"Q{label[1]} FY{year - 1:02d}" for label in labels]
         partial = len(labels) < 4
     else:
