@@ -72,7 +72,11 @@ async def public_demo_boundary(request, call_next):
         return JSONResponse(status_code=403, content={"detail":
             "This public demo is read-only. Run YFINN locally to index documents, change alerts or enable optional AI."})
     if not request.url.path.startswith("/api/"):
-        return await call_next(request)
+        response = await call_next(request)
+        if request.url.path.startswith("/assets/"):
+            # Revalidate every time (cheap ETag check) so phones never keep running stale scripts.
+            response.headers["Cache-Control"] = "no-cache"
+        return response
     with live_store.connection() as db:
         workspaces.expire(db)
     session = workspaces.identify(request.cookies.get(workspaces.COOKIE))
@@ -188,6 +192,8 @@ def get_brief(window: str = "24h", start: date | None = None, end: date | None =
 @app.get("/api/research/{symbol}")
 def get_research(symbol: str, q: str = Query("", max_length=160), lens: str = "business", as_of: date | None = None):
     try:
+        # Status first: if indexing reports complete, the documents read below include everything it indexed.
+        job = discovery.status(documents.ticker(symbol))
         result = desk.research(symbol, q)
         if as_of and as_of > date.today():
             raise ValueError("Research as-of date cannot be in the future.")
@@ -204,7 +210,7 @@ def get_research(symbol: str, q: str = Query("", max_length=160), lens: str = "b
                 result["pending_guidance"] = {"period": result["comparison"]["period"],
                                               "forecasts": [f for f in result["comparison"]["forecasts"] if known(f["source"])]}
                 result["comparison"] = None
-        result["discovery"] = discovery.status(result["company"]["symbol"])
+        result["discovery"] = job
         result["promises"] = None if cutoff else guidance.track(result["company"]["symbol"])
         try:
             result["analysis"] = ({"enabled": False, "job": None, "lens": lens, "lenses": [], "date_filtered": bool(cutoff),

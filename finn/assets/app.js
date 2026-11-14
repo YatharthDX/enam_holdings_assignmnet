@@ -208,6 +208,15 @@ async function render() {
 }
 
 document.addEventListener('click',event=>{
+  // In-app links never hand navigation to the browser: some mobile browsers and
+  // home-screen apps reload or jump to the top on a hash change.
+  const link=event.target.closest('a[href^="#"]');
+  if (link && !link.classList.contains('skip') && link.getAttribute('href').length>1 &&
+      !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && event.button===0) {
+    event.preventDefault();
+    if (link.getAttribute('href')!==location.hash) { history.pushState(null,'',link.getAttribute('href')); render(); }
+    return;
+  }
   const target=event.target.closest('button, a, dialog');
   if (!target) return;
   if (target.id==='hide-notice') {
@@ -388,5 +397,8 @@ document.addEventListener('input',event=>{
   if (event.target.id==='ticker') event.target.setCustomValidity('');
 });
 if ('scrollRestoration' in history) history.scrollRestoration='manual';
-window.addEventListener('hashchange',render);
+// Back/forward and form-set hashes; each route renders once even if both events fire.
+const onNavigate=()=>{ if ((location.hash||'#brief')!==activeHash) render(); };
+window.addEventListener('popstate',onNavigate);
+window.addEventListener('hashchange',onNavigate);
 render();
