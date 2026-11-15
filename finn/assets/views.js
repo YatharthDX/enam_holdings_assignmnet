@@ -86,7 +86,15 @@ export function researchView(data,catalog,options = {}) {
   const noDocs = empty('No indexed sources for '+c.symbol,options.readOnly ? 'Index original documents for this ticker in your own local workspace. The public demo includes the prepared historical source set.' : 'Find primary documents for this ticker to build its evidence index.');
   const job = data.discovery;
   const extracting = job?.sources?.find(s=>s.index_status==='extracting');
-  const discovery = options.readOnly || data.as_of ? '' : `<section class="discovery-panel" aria-label="Document discovery">
+  // Never hide the entry point silently: say why indexing is unavailable and offer the way back.
+  const discoveryIntro = `<div><strong>Find primary documents</strong><p>Latest annual reports and up to eight call transcripts; their guidance is checked against filed results.</p></div>`;
+  const discovery = options.readOnly ? `<section class="discovery-panel" aria-label="Document discovery">${discoveryIntro}
+      <div class="discovery-actions">${catalog.runtime?.can_start_workspace?`<button type="button" id="open-workspace" class="button primary">Open my workspace to index</button>`:''}</div>
+      <p class="discovery-status">${catalog.runtime?.can_start_workspace?'Indexing new companies needs your own workspace (free, no sign-up, 24 hours).':'This deployment is read only.'}</p></section>`
+    : data.as_of ? `<section class="discovery-panel" aria-label="Document discovery">${discoveryIntro}
+      <div class="discovery-actions"><a class="button secondary" href="${route('research',{ticker:c.symbol})}">Show all evidence to index</a></div>
+      <p class="discovery-status">Indexing is paused while you view ${esc(c.symbol)} as of ${esc(dateLabel(data.as_of))}.</p></section>`
+    : `<section class="discovery-panel" aria-label="Document discovery">
     <div><strong>Find primary documents</strong><p>Latest annual reports and up to eight call transcripts; their guidance is checked against filed results.</p></div>
     <div class="discovery-actions"><button type="button" id="discover-documents" class="button secondary" ${job?.status==='running'?'disabled':''}>${job?.status==='running'?'Indexing…':'Find documents'} ${icon('book',16)}</button>
     <button type="button" id="refresh-documents" class="text-button" ${job?.status==='running'?'disabled':''}>Refresh sources</button></div>
