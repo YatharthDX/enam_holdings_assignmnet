@@ -7,3 +7,4 @@ finn-workspace*.json
 *.sqlite3*
 .DS_Store
 /question_files/.claude/
+/docs/SUBMISSION_EMAIL.md

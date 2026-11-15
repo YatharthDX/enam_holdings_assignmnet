@@ -22,7 +22,7 @@ flowchart TD
 | Filings | NSE `corporate-announcements` (per symbol for snapshots, date range for refreshes); RSS fallback marked partial; official CSV import | `live_filings` keyed by symbol + attachment URL; every metadata revision kept | Classified from NSE's subject and the filing text; management changes and results trigger enrichment |
 | Results | NSE `integrated-filing-results` (from the March 2025 quarter) and the older `corporates-financial-results` listing; XBRL instances parsed directly | `results_cards`: latest card plus 10-quarter history; consolidated preferred; never mixes scopes | Attached to the results filing broadcast within −1…+3 days; history feeds promised-vs-delivered |
 | Prices | Yahoo completed daily bars after the 16:15 IST buffer; a missing final close is taken from quote metadata only when stamped after that session | `daily_bars` | Price ±X% and volume >N× the prior-20-session mean, per workspace rules |
-| Documents | Screener's public link index for the NSE symbol (verified on the page) → up to 2 annual reports and 8 transcripts, newest by call month; BSE PDF handlers accepted | Pages by SHA-256 revision and parser version; PDFium in a subprocess with a deadline; FTS5 index kept by triggers | Transcripts feed guidance extraction, cached per revision |
+| Documents | Screener's public link index for the NSE symbol (verified on the page) → up to 2 annual reports and 8 transcripts, newest by call month; BSE PDF handlers accepted; a transcript whose issuer link fails is fetched from the copy filed with NSE | Pages by SHA-256 revision and parser version; PDFium in a subprocess with a deadline; FTS5 index kept by triggers | Transcripts feed guidance extraction, cached per revision |
 | People in filings | Regulation 30 attachments for management-change filings | `filing_people`: name, change, role, brief profile, employers (+ joining year), schools | A person named without a profile borrows the same issuer's earlier profile for that name |
 | Network | Fictional seed; local JSON import with consent fields | Workspace-owned profiles with dated employment and schools; acquaintance edges with strength 1–3 | Matched to filing people by organisation (legal-suffix-insensitive, "X Group" covers X companies) and exact school |
 
@@ -43,7 +43,7 @@ flowchart TD
 
 **Routing and cost.** Bulk extraction uses `FINN_<PROVIDER>_BULK_MODEL` (defaults to the main model); synthesis uses the main model. The default provider is OpenRouter's free router with zero-price caps, so the demo costs nothing. Every extraction is cached by document revision: a transcript is read once, ever. A failed or rate-limited call falls back to rules; there is no silent paid fallback.
 
-**Verification.** Every model statement must quote its passage exactly, and every number must appear literally in that quote (so "16%" cannot become 0.16). Analyst questions are never guidance. Periods are explicit, or inferred from the call date and labelled as inferred. Model and rule outputs carry their method in the UI.
+**Verification.** Every model statement must quote its passage, and every number must appear literally in that quote (so "16%" cannot become 0.16). Quotes are matched after normalising typography (curly quotes, dashes, words split across PDF lines), and the text shown is always the passage's own. Synthesis findings need at least one verified citation. Analyst questions are never guidance. Periods are explicit, or inferred from the call date and labelled as inferred. Model and rule outputs carry their method in the UI.
 
 **Agents.** None act autonomously. The scheduler and enrichment are ordinary code with bounded work per cycle; nothing contacts people or places orders.
 
@@ -67,7 +67,7 @@ flowchart TD
 | Piece | Where | Why |
 | --- | --- | --- |
 | Web app | Render Free (Docker) | Zero cost, HTTPS at the edge, phone-reachable |
-| Keep-warm | GitHub Actions cron hitting `/health` every 10 min | Avoids 20–50 s cold starts within the free hours |
+| Keep-warm | An external uptime pinger on `/health` every 5 min (GitHub's scheduled workflow is a backup; it runs only every few hours) | Avoids 20–50 s cold starts within the free hours |
 | Snapshot build | A machine with an Indian/residential IP (today: the developer's laptop) | NSE blocks many cloud ranges |
 | Models | OpenRouter free router by default; Gemini/OpenAI optional | Free tier for the demo; provider-agnostic adapter |
 | CI | GitHub Actions builds the real container and runs the suite, smoke and session checks | The deployed artefact is the tested artefact |
@@ -76,4 +76,4 @@ The production shape is the same split with durable pieces: a scheduled ingestio
 
 ## 5. Known limits
 
-Scanned PDFs need OCR (not implemented). Some issuer sites serve incomplete TLS chains, so their PDFs fail verification and are reported, not bypassed. Revenue guidance given in constant currency is shown but not scored against INR filings. Filed EBIT can differ from a company's "adjusted" EBIT. The relationship map (competitors, suppliers, customers) is a small curated file.
+Scanned PDFs need OCR (not implemented). Some issuer sites serve incomplete TLS chains; YFINN never bypasses verification and instead fetches the copy of the transcript filed with NSE, which works wherever NSE is reachable (not from most cloud hosts). Revenue guidance given in constant currency is shown but not scored against INR filings. Filed EBIT can differ from a company's "adjusted" EBIT. The relationship map (competitors, suppliers, customers) is a small curated file.

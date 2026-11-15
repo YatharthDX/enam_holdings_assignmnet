@@ -8,7 +8,7 @@
 2. In Render: **New → Blueprint** from the repo. Keep the Blueprint's environment values.
 3. Optional free AI: add `OPENROUTER_API_KEY` in the Render dashboard (never in the repo). Public generation stays bounded (3 starts per workspace/hour, 5/hour and 15/day globally, one at a time). Transcript guidance in public mode uses the rule pass, so a key is not needed for the core flows.
 4. After the deploy is healthy: `curl https://<service>.onrender.com/health` should report version `0.8.0`.
-5. Keep it warm: the `Keep demo warm` workflow pings `/health` every 10 minutes. Set the repository variable `FINN_DEMO_URL` if your URL differs.
+5. Keep it warm: add a free uptime monitor (e.g. UptimeRobot) for `https://<service>.onrender.com/health` every 5 minutes. The `Keep demo warm` GitHub workflow is a backup only, because GitHub runs scheduled jobs every few hours rather than every 10 minutes. Set the repository variable `FINN_DEMO_URL` if your URL differs.
 
 ## Refreshing the shipped data
 
