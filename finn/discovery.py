@@ -318,9 +318,9 @@ def _run(symbol, token, fetch=fetch_public, *, force=False):
                     owned = db.execute("SELECT 1 FROM document_jobs WHERE symbol=? AND token=? AND status='running'", (symbol, token)).fetchone()
                 if not owned:
                     return
-                cached = None if force else documents.cached_index(symbol, candidate["kind"], candidate["title"], candidate["url"],
-                                                                         candidate.get("available_by", ""))
+                cached = None if force else documents.cached_index(symbol, candidate["kind"], candidate["title"], candidate["url"])
                 if cached:
+                    documents.set_available_by(symbol, candidate["url"], candidate.get("available_by", ""))
                     candidate.update(index_status="indexed", pages=cached["pages"], error=None,
                                      cached=True, checked_at=cached["checked_at"], elapsed_seconds=0)
                     reused += 1
@@ -342,8 +342,8 @@ def _run(symbol, token, fetch=fetch_public, *, force=False):
                         candidate.update(index_status="extracting", processed_pages=done, total_pages=total)
                         publish(label + f" — reading page {done} of {total}…")
                     _, pages, _ = documents.import_pdf(path, symbol, candidate["kind"], candidate["title"],
-                                                      candidate["url"], published=candidate.get("available_by", ""),
-                                                      progress=progress)
+                                                      candidate["url"], published="", progress=progress,
+                                                      available_by=candidate.get("available_by", ""))
                     candidate.update(index_status="indexed", pages=pages, error=None,
                                      elapsed_seconds=round(time.monotonic() - started, 1))
                 indexed += 1

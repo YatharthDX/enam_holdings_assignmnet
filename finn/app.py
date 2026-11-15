@@ -125,6 +125,7 @@ def open_workspace(request: Request, disposable: bool = False):
         cookie, session = workspaces.create(adopt_legacy=not disposable)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+    live.evaluate_new_workspace(session["workspace"])
     response = JSONResponse({"authenticated": True, "expires": session["expires"], "csrf": session["csrf"]}, status_code=201)
     response.set_cookie(workspaces.COOKIE, cookie, max_age=workspaces.TTL, httponly=True,
                         samesite="lax", secure=https_request(request), path="/")
@@ -201,7 +202,7 @@ def get_research(symbol: str, q: str = Query("", max_length=160), lens: str = "b
         result["structured"] = research.view(result["company"]["symbol"], cutoff)
         result["as_of"] = cutoff
         if cutoff:
-            known = lambda source: bool(source.get("date")) and len(source["date"]) == 10 and source["date"] <= cutoff
+            known = lambda source: bool(research.known_by(source)) and research.known_by(source) <= cutoff
             result["sources"] = [s for s in result["sources"] if known(s)]
             result["matches"] = [s for s in result["matches"] if known(s)]
             if result["snapshot"] and not known(result["snapshot"]["source"]):

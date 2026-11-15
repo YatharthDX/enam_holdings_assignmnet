@@ -280,10 +280,15 @@ def store_items(db, by_symbol):
 def items_for(db, symbol):
     prepare(db)
     rows = db.execute("SELECT doc_id, body FROM guidance_items WHERE symbol=?", (symbol,)).fetchall()
-    live_docs = [json.loads(r[1]) for r in rows if r[0] != "snapshot-" + symbol]
-    chosen = live_docs if any(live_docs) else [json.loads(r[1]) for r in rows if r[0] == "snapshot-" + symbol]
-    items = [item for doc in chosen for item in doc]
-    return sorted(items, key=lambda i: (i["call_month"] or "", i["metric"]), reverse=True)
+    # Shipped and live extractions merge; a rule-only pass never erases a model-verified reading.
+    merged = {}
+    for row in rows:
+        for item in json.loads(row[1]):
+            key = (item["call_month"], item["metric"], item["period"], item["low"], item["high"], item["basis"])
+            current = merged.get(key)
+            if current is None or (item["method"].startswith("model") and not current["method"].startswith("model")):
+                merged[key] = item
+    return sorted(merged.values(), key=lambda i: (i["call_month"] or "", i["metric"]), reverse=True)
 
 
 # ---- reduce: actuals from XBRL history and code-made verdicts ----

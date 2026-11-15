@@ -48,10 +48,18 @@ def period(value):
     return ((match[1] + " ") if match[1] else "") + "FY" + match[2]
 
 
+def known_by(source):
+    """The real publication date when known, otherwise the conservative available-by estimate."""
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", source.get("date") or ""):
+        return source["date"]
+    return source.get("available_by") or ""
+
+
 def corpus(symbol, as_of=None):
     records, pages = documents.for_symbol(symbol, include_pages=True, include_revision=True)
     if records:
-        by_id = {r["id"]: {**desk.short_source(r), "revision": r["digest"] + ":" + r["parser_version"]} for r in records}
+        by_id = {r["id"]: {**desk.short_source(r), "available_by": r.get("available_by", ""),
+                           "revision": r["digest"] + ":" + r["parser_version"]} for r in records}
         items = [{"source": {**by_id[p["doc_id"]], "page": p["page"]}, "text": p["body"]} for p in pages]
         kind = "indexed_originals"
     else:
@@ -62,7 +70,7 @@ def corpus(symbol, as_of=None):
     excluded = 0
     if as_of:
         date.fromisoformat(as_of)
-        kept = [p for p in items if re.fullmatch(r"\d{4}-\d{2}-\d{2}", p["source"]["date"]) and p["source"]["date"] <= as_of]
+        kept = [p for p in items if (known_by(p["source"]) or "9999") <= as_of]
         excluded = len(items) - len(kept)
         items = kept
     return items, kind, excluded

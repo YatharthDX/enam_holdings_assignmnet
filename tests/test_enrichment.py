@@ -293,6 +293,19 @@ class GuidanceTests(unittest.TestCase):
         self.assertEqual(guidance.verdict({**growth, "basis": "constant_currency"}, card)["status"], "different_basis")
         self.assertEqual(guidance.verdict({**item, "period": "Q4 FY27"}, card)["status"], "due_later")
 
+    def test_live_rule_pass_never_erases_shipped_model_readings(self):
+        model = {"metric": "ebit_margin", "label": "EBIT", "period": "FY27", "period_inferred": False, "low": "20", "high": "22",
+                 "unit": "%", "basis": "not_stated", "kind": "guidance", "quote": "q", "call_month": "2026-10",
+                 "method": "model-verified:x", "source": {"id": "x", "title": "t", "url": "https://x"}}
+        other = {**model, "metric": "tax_rate", "low": "26", "high": "27"}
+        with store.connection() as db:
+            guidance.store_items(db, {"TEST": [model, other]})
+            guidance.prepare(db)
+            db.execute("INSERT INTO guidance_items VALUES(?,?,?,?)", ("TEST", "local-1", "r", json.dumps([{**model, "method": "rules"}])))
+            items = guidance.items_for(db, "TEST")
+        self.assertEqual(len(items), 2)
+        self.assertTrue(all(i["method"].startswith("model") for i in items))
+
     def test_repeated_promises_group_and_revisions_chain(self):
         def said(month, low, high):
             return {"metric": "revenue_growth", "label": "Revenue growth", "period": "FY27", "period_inferred": False,
@@ -307,3 +320,43 @@ class GuidanceTests(unittest.TestCase):
         chain = tracked["revisions"][0]
         self.assertEqual(chain["direction"], "lowered")
         self.assertEqual([(s["low"], s["high"]) for s in chain["steps"]], [("1.5", "3.5"), ("1.5", "3"), ("1", "2")])
+
+
+class AvailableByTests(unittest.TestCase):
+    def test_point_in_time_uses_real_date_then_estimate(self):
+        from finn import research
+        self.assertEqual(research.known_by({"date": "2026-11-03", "available_by": "2026-11-10"}), "2026-11-03")
+        self.assertEqual(research.known_by({"date": "Publication date unverified", "available_by": "2026-11-10"}), "2026-11-10")
+        self.assertEqual(research.known_by({"date": "Publication date unverified"}), "")
+
+
+class TenureTests(unittest.TestCase):
+    def setUp(self):
+        token = workspaces._current.set("public")
+        self.addCleanup(workspaces._current.reset, token)
+
+    def test_a_later_employer_ends_the_earlier_stint(self):
+        # Gaurav was at POWERGRID 2008-2019; someone who left POWERGRID for another firm in 2005 never overlapped.
+        person = {"name": "Past Executive", "education": [],
+                  "organisations": [{"name": "Power Grid Corporation", "since": "1995"}, {"name": "Elsewhere Limited", "since": "2005"}]}
+        tie = next(t for t in network.ties(person) if t["name"] == "Gaurav Singh")
+        self.assertEqual(tie["tie"]["strength"], "likely")
+        self.assertIn("different years", tie["reason"])
+        current = {**person, "organisations": [{"name": "Power Grid Corporation", "since": "2010"}]}
+        self.assertEqual(next(t for t in network.ties(current) if t["name"] == "Gaurav Singh")["tie"]["strength"], "strong")
+
+
+class PatConsistencyTests(unittest.TestCase):
+    def test_pat_uses_one_measure_across_quarters(self):
+        crore = 10_000_000
+        def q(end, owner=None, total=100):
+            values = {"RevenueFromOperations": Decimal(1000 * crore), "ProfitBeforeTax": Decimal(150 * crore),
+                      "ProfitLossForPeriod": Decimal(total * crore)}
+            if owner is not None:
+                values["ProfitOrLossAttributableToOwnersOfParent"] = Decimal(owner * crore)
+            return {"values": values, "meta": {"scope": "Consolidated", "published": end + "T00:00:00+00:00", "url": "https://x"}}
+        mixed = {date(2026, 6, 30): q("2026-06-30", owner=None, total=100), date(2026, 9, 30): q("2026-09-30", owner=80, total=110)}
+        card = results.build_card("TEST", mixed)
+        pat = next(r for r in card["rows"] if r["key"] == "pat")
+        self.assertEqual(pat["value_cr"], 110.0)  # total profit for both quarters, not owners' share for one
+        self.assertEqual(pat["qoq"], 10.0)

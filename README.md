@@ -61,6 +61,10 @@ Model routing: high-volume extraction uses `FINN_*_BULK_MODEL` (falls back to th
 - **Live refresh.** Locally a scheduler fetches filings every 15 minutes and enriches new results and appointments. NSE rejects many cloud IP ranges, which is why the hosted demo relies on the snapshot.
 - **Documents.** Up to two annual reports and eight call transcripts per ticker, hashed and re-used by revision; any NSE ticker works.
 
+## Network data
+
+The demo network is 29 synthetic contacts; no real profiles were scraped. People named in filings come from the company's own disclosure. For real use the investor imports their own LinkedIn data export (`Connections.csv`), contacts and CRM history with consent recorded per profile; see [ARCHITECTURE.md](docs/ARCHITECTURE.md#1-data-pipelines).
+
 ## Privacy and security (summary)
 
 Each browser gets a signed, expiring (24 h) workspace; holdings, contacts, notes, alerts and reviewed facts are owner-scoped and erasable; mutations need CSRF and same-origin checks. The public demo accepts fictional profiles only; real local imports require recorded consent, purpose and provenance. Full detail, including what a production deployment would add, is in [ARCHITECTURE.md](docs/ARCHITECTURE.md).

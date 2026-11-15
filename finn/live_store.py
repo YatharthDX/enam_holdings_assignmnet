@@ -121,10 +121,12 @@ def state(db, key, attempted, status, detail, url, coverage):
                (key, attempted, success, status, detail, url, coverage))
 
 
-def bars(db, symbol):
+def bars(db, symbol, until=None):
+    """The latest 22 sessions, optionally as of a day (so a snapshot view ignores later bars)."""
     return [dict(r) for r in db.execute(
-        "SELECT * FROM (SELECT * FROM daily_bars WHERE symbol=? ORDER BY day DESC LIMIT 22) ORDER BY day",
-        (symbol,)
+        "SELECT * FROM (SELECT * FROM daily_bars WHERE symbol=? AND (? IS NULL OR day<=?) "
+        "ORDER BY day DESC LIMIT 22) ORDER BY day",
+        (symbol, until, until)
     )]
 
 

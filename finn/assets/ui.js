@@ -83,6 +83,7 @@ export function openSheet(id) {
     content = `<div class="kicker">${evidenceKind}</div><h2 id="sheet-title">${esc(d.title)}</h2>
       <p class="muted">${esc(d.symbol)} · ${esc(d.kind)} · ${esc(dateLabel(d.date))}</p>
       ${d.date_note?`<p class="coverage">${esc(d.date_note)}</p>`:''}
+      ${d.available_by && !/^\d{4}-\d{2}-\d{2}$/.test(d.date||'')?`<p class="coverage">Exact release date not listed; treated as available by ${esc(dateLabel(d.available_by))} for past-date views.</p>`:''}
       ${d.excerpt_type === 'summary' ? `<h3>Indexed summary</h3><p>${esc(d.excerpt)}</p>` :
         d.excerpt ? `<blockquote>${esc(d.excerpt)}</blockquote>` : ''}
       <p class="source-locator">${icon('book')} ${esc(sourceLocation || 'Original document')}</p>

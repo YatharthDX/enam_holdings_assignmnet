@@ -93,7 +93,9 @@ class DiscoveryTests(unittest.TestCase):
         # Discovered originals carry a conservative "available by" date for point-in-time research.
         expected = {discovery.available_by("transcript", "Oct 2026"), discovery.available_by("annual_report", "Annual Report 2026"),
                     discovery.available_by("annual_report", "Annual Report 2025")}
-        self.assertIn(result["matches"][0]["date"], {d or "Publication date unverified" for d in expected})
+        # The real release date stays unverified; the conservative estimate is carried separately.
+        self.assertEqual(result["matches"][0]["date"], "Publication date unverified")
+        self.assertIn(result["matches"][0]["available_by"], expected)
 
     def test_failed_update_keeps_previous_documents_and_original_links(self):
         pdf = self.root / "original.pdf"

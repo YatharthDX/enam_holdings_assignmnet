@@ -342,8 +342,6 @@ def generate(selected, selected_model, instructions, evidence, schema):
                    "messages": [{"role": "system", "content": instructions}, {"role": "user", "content": text}],
                    "response_format": {"type": "json_schema", "json_schema": {
                        "name": "finn_research", "strict": True, "schema": schema}},
-                   # Free reasoning models otherwise spend the whole budget thinking and never answer.
-                   "reasoning": {"effort": "low", "exclude": True},
                    "provider": {"require_parameters": True, "allow_fallbacks": False,
                                 "max_price": {"prompt": 0, "completion": 0, "request": 0}}}
         body = post_json(OPENROUTER_ENDPOINT, payload, {"Authorization": "Bearer " + key(selected),

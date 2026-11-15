@@ -364,6 +364,7 @@ def ties(person, limit=3):
         if " ".join(p["name"].casefold().replace(".", " ").split()) == target:
             reasons.append((0, "This is a contact in your network."))
         first = p["name"].split()[0]
+        joined = sorted(int(o["since"]) for o in person.get("organisations", []) if o.get("since"))
         for org in person.get("organisations", []):
             for job in employment(p):
                 if not any(same_org(name, org["name"]) for name in org_names(job["employer"])):
@@ -372,9 +373,14 @@ def ties(person, limit=3):
                 since = int(org["since"]) if org.get("since") else None
                 employer = org_names(job["employer"])[-1]
                 span = f"{start or '?'}–{end or 'present'}"
-                if since and (end is None or end >= since):
-                    reasons.append((1, f"{first} was at {employer} {span}; {person['name']} joined {org['name']} in {since}, "
-                                       f"so their time there overlapped."))
+                # The person's stint ends when their next dated employer begins.
+                left = min((y for y in joined if since and y > since), default=None)
+                if since and (end is None or end >= since) and (left is None or start is None or start <= left):
+                    reasons.append((1, f"{first} was at {employer} {span}; {person['name']} was at {org['name']} from {since}"
+                                       f"{f' to about {left}' if left else ''}, so their time there overlapped."))
+                elif since:
+                    reasons.append((2, f"{first} worked at {employer} ({span}); {person['name']} was there from {since}"
+                                       f"{f' to about {left}' if left else ''}. Same employer, different years."))
                 else:
                     reasons.append((2, f"{first} worked at {employer} ({span}); {person['name']}'s career includes "
                                        f"{org['name']}. The filing does not give years, so overlap is unconfirmed."))

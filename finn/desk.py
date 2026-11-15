@@ -152,7 +152,7 @@ def research(symbol, query=""):
         if best is not None:
             keep = set(best)
             indexed_pages = [p for p in indexed_pages if (p["doc_id"], p["page"]) in keep]
-    imported = {s["id"]: short_source(s) for s in records}
+    imported = {s["id"]: {**short_source(s), "available_by": s.get("available_by", "")} for s in records}
     passages = []
     for s in sources:
         if s["excerpt"]:

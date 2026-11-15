@@ -179,7 +179,7 @@ def triggered(db, now):
             }))
     for symbol in sorted(held):
         company = desk.COMPANIES.get(symbol, {"name": symbol})
-        item = signal(store.bars(db, symbol))
+        item = signal(store.bars(db, symbol, now.astimezone(providers.IST).date().isoformat()))
         if item is None:
             continue
         session_day = providers.timestamp(item["day"]).astimezone(providers.IST).date()
@@ -226,8 +226,20 @@ def put_alert(db, event_id, event_at, now, data):
                (event_id, event_at, providers.iso(now), json.dumps(data)))
 
 
+def evaluate_new_workspace(workspace_id):
+    """A fresh workspace gets its alerts at once, measured from the data's own time."""
+    at = anchor()[0]
+    token = workspaces._current.set(workspace_id)
+    try:
+        with store.connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            evaluate(db, at)
+    finally:
+        workspaces._current.reset(token)
+
+
 def update_settings(value, now=None):
-    now = now or clock()
+    now = now or anchor()[0]
     with store.connection() as db:
         db.execute("BEGIN IMMEDIATE")
         if workspaces.private():
@@ -250,6 +262,7 @@ def price_due(success, now, latest_day=None):
 
 
 def refresh(now=None, filing_fetch=providers.filings, price_fetch=providers.prices, force_prices=False, enrich=None):
+    explicit_time = now is not None
     now = now or clock()
     started = providers.iso(now)
     token = secrets.token_hex(16)
@@ -333,12 +346,13 @@ def refresh(now=None, filing_fetch=providers.filings, price_fetch=providers.pric
                     errors.append(symbol + ": " + str(exc))
                     with store.connection() as db:
                         store.state(db, "yahoo:" + symbol, started, "error", str(exc), url, "gap")
+        evaluate_at = now if explicit_time else anchor()[0]
         with store.connection() as db:
             active = [None, *[r[0] for r in db.execute("SELECT id FROM workspaces WHERE expires>?", (system_time.time(),))]]
             for wid in active:
                 context = workspaces._current.set(wid)
                 try:
-                    evaluate(db, now)
+                    evaluate(db, evaluate_at)
                 finally:
                     workspaces._current.reset(context)
     except Exception:
@@ -373,10 +387,12 @@ def anchor():
     """(time, snapshot_iso): the shipped snapshot anchors windows until a live fetch is newer."""
     now = clock()
     with store.connection() as db:
-        rows = {r["key"]: r["success"] for r in db.execute(
-            "SELECT key, success FROM source_state WHERE key IN ('nse','snapshot')")}
-    snap, live_success = rows.get("snapshot"), rows.get("nse")
-    if snap and not (live_success and live_success > snap):
+        rows = {r["key"]: (r["success"], r["coverage"]) for r in db.execute(
+            "SELECT key, success, coverage FROM source_state WHERE key IN ('nse','snapshot')")}
+    snap = rows.get("snapshot", (None, None))[0]
+    live_success, coverage = rows.get("nse", (None, None))
+    # Only a complete date-range fetch supersedes the snapshot; a partial RSS fallback cannot.
+    if snap and not (live_success and coverage == "range" and live_success > snap):
         return min(providers.timestamp(snap), now), snap
     return now, None
 
@@ -468,7 +484,7 @@ def snapshot(window, start=None, end=None, now=None):
         quotes = []
         for symbol in sorted(held):
             company = desk.COMPANIES.get(symbol, {"name": symbol})
-            item = signal(store.bars(db, symbol))
+            item = signal(store.bars(db, symbol, today.isoformat()))
             quotes.append({"symbol": symbol, "company": company["name"], **(item or {})})
         source_status = [dict(row) for row in db.execute("SELECT * FROM source_state ORDER BY key") if row["key"] in ("nse", "snapshot") or row["key"][6:] in held]
         preferences = workspaces.settings(db)

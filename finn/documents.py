@@ -129,9 +129,11 @@ def for_symbol(symbol, include_pages, include_revision=False):
     with read_snapshot() as db:
         if db is None:
             return [], []
+        has_available = "available_by" in {r[1] for r in db.execute("PRAGMA table_info(documents)")}
         records = db.execute(
-            "SELECT id, symbol, title, kind, published AS date, url,digest FROM documents "
-            "WHERE symbol=? ORDER BY published DESC, id", (symbol,)
+            "SELECT id, symbol, title, kind, published AS date, url,digest"
+            + (", available_by" if has_available else ", '' AS available_by")
+            + " FROM documents WHERE symbol=? ORDER BY published DESC, id", (symbol,)
         ).fetchall()
         passages = []
         if include_pages:
@@ -176,6 +178,20 @@ def ensure_fts(db):
     db.execute("INSERT INTO pages_fts(pages_fts) VALUES('rebuild')")
 
 
+def ensure_available_by(db):
+    """Estimated 'known by' date, kept apart from the real publication date."""
+    if "available_by" not in {r[1] for r in db.execute("PRAGMA table_info(documents)")}:
+        db.execute("ALTER TABLE documents ADD COLUMN available_by TEXT NOT NULL DEFAULT ''")
+
+
+def set_available_by(symbol, url, value):
+    doc_id = "local-" + hashlib.sha256((ticker(symbol) + "|" + source_url(url)).encode()).hexdigest()[:24]
+    with closing(sqlite3.connect(database_path(), timeout=15)) as db, db:
+        if db.execute("SELECT 1 FROM sqlite_master WHERE name='documents'").fetchone():
+            ensure_available_by(db)
+            db.execute("UPDATE documents SET available_by=? WHERE id=? AND available_by<>?", (value or "", doc_id, value or ""))
+
+
 def prepare_index():
     """Backfill the full-text index for a database indexed before FTS existed."""
     path = database_path()
@@ -185,6 +201,7 @@ def prepare_index():
         if db.execute("SELECT 1 FROM sqlite_master WHERE name='pages'").fetchone():
             db.execute("BEGIN IMMEDIATE")
             ensure_fts(db)
+            ensure_available_by(db)
 
 
 def search(symbol, terms, limit=40):
@@ -223,7 +240,7 @@ def cached_index(symbol, kind, title, url, published="", max_age=INDEX_CACHE_SEC
         return {"pages": pages, "checked_at": row[4]} if pages else None
 
 
-def import_pdf(file, symbol, kind, title, url, published, *, progress=None):
+def import_pdf(file, symbol, kind, title, url, published, *, progress=None, available_by=""):
     from . import pdf_text, runtime
 
     symbol = ticker(symbol)
@@ -237,8 +254,8 @@ def import_pdf(file, symbol, kind, title, url, published, *, progress=None):
             raise ValueError("The publication date must be today or earlier.")
         published = publication_date.isoformat()
     else:
-        # Discovery knows the reporting-period label, while an exact release
-        # date may be absent from the link index. Preserve that uncertainty.
+        # Discovery knows the reporting period, not the exact release date. The real date stays
+        # unknown; a conservative estimate is stored separately as available_by.
         published = ""
     path = Path(file)
     max_bytes, max_pages = limits()
@@ -260,6 +277,7 @@ def import_pdf(file, symbol, kind, title, url, published, *, progress=None):
                 cached_count = existing.execute("SELECT COUNT(*) FROM pages WHERE doc_id=?", (doc_id,)).fetchone()[0]
     if cached_count is not None:
         retain_original(raw, digest)
+        set_available_by(symbol, url, available_by)
         # Commit after the read snapshot closes, so the writer never waits on itself.
         with sqlite3.connect(database_path()) as writer:
             writer.execute("CREATE TABLE IF NOT EXISTS document_checked (doc_id TEXT PRIMARY KEY,at REAL NOT NULL)")
@@ -288,15 +306,17 @@ def import_pdf(file, symbol, kind, title, url, published, *, progress=None):
         db.execute("CREATE TABLE IF NOT EXISTS document_checked (doc_id TEXT PRIMARY KEY,at REAL NOT NULL)")
         db.execute("CREATE TABLE IF NOT EXISTS document_versions (doc_id TEXT NOT NULL,digest TEXT NOT NULL,metadata TEXT NOT NULL,PRIMARY KEY(doc_id,digest))")
         ensure_fts(db)
+        ensure_available_by(db)
         old = db.execute("SELECT digest, kind, title, published FROM documents WHERE id=?",
                          (doc_id,)).fetchone()
-        db.execute("""INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?)
+        db.execute("""INSERT INTO documents (id, symbol, kind, title, published, url, digest) VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET kind=excluded.kind, title=excluded.title,
             published=excluded.published, digest=excluded.digest""",
                    (doc_id, symbol, KINDS[kind], title, published, url, digest))
         db.execute("DELETE FROM pages WHERE doc_id=?", (doc_id,))
         db.executemany("INSERT INTO pages VALUES (?, ?, ?)", page_text)
         db.execute("INSERT INTO document_parsers VALUES(?,?) ON CONFLICT(doc_id) DO UPDATE SET version=excluded.version", (doc_id, PARSER_VERSION))
+        db.execute("UPDATE documents SET available_by=? WHERE id=?", (available_by or "", doc_id))
         db.execute("INSERT OR REPLACE INTO document_checked VALUES(?,?)", (doc_id, time.time()))
         db.execute("INSERT OR IGNORE INTO document_versions VALUES(?,?,?)", (doc_id,digest,json.dumps({"url":url,"title":title,"published":published})))
     return doc_id, len(page_text), "indexed"

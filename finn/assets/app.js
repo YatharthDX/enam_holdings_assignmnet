@@ -151,7 +151,6 @@ async function render() {
     setWorkspaceAccess(session.authenticated && !readOnly);
     if (readOnly && view==='brief' && !params.has('mode')) {
       params.set('mode','live');
-      if (!params.has('window')) params.set('window','7d');
       destination=route('brief',Object.fromEntries(params));
       history.replaceState(null,'',destination);
     }

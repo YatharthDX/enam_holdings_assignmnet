@@ -47,6 +47,12 @@ flowchart TD
 
 **Agents.** None act autonomously. The scheduler and enrichment are ordinary code with bounded work per cycle; nothing contacts people or places orders.
 
+**Network profiles: what the demo uses and how it would work for real.** The demo network is 29 synthetic people; no real profiles were scraped or stored. People named in filings (incoming CEOs, directors) come only from what the company itself disclosed to the exchange. For real use:
+
+1. *The investor's own network* is imported by the investor into their workspace: LinkedIn's member data export (Settings → Data privacy → Get a copy of your data → `Connections.csv`: name, company, position, connected-on), phone or Google contacts, and CRM or calendar history for last-contact dates. Each record carries consent, purpose and an expiry.
+2. *Career and education detail* for a contact comes from the contact (self-filled or shared), or from a licensed people-data provider under a data-processing agreement. LinkedIn's own APIs expose this only to approved partners, and scraping is prohibited by its User Agreement, so neither is used.
+3. *People in filings* are enriched only from primary disclosures: the Regulation 30 profile, director profiles in the annual report, and the MCA director (DIN) record.
+
 ## 3. Privacy, security and consent
 
 - **Ownership.** A signed, opaque, HttpOnly cookie identifies a workspace (only its hash is stored). Holdings, alert rules and history, contacts, edges, notes and reviewed facts are workspace-owned; queries are always filtered by the server-chosen owner; mutations require CSRF plus same-origin. Workspaces expire after 24 hours and can be exported or erased at any time; foreign keys cascade the deletion.

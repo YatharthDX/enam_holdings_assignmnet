@@ -87,7 +87,17 @@ def first(values, *names):
     return next((values[n] for n in names if n in values), None)
 
 
-def headline(values, kind):
+PAT_TAGS = {"bank": ("ProfitLossAfterTaxesMinorityInterestAndShareOfProfitLossOfAssociates", "ProfitLossForThePeriod", "ProfitLossForPeriod"),
+            "other": ("ProfitOrLossAttributableToOwnersOfParent", "ProfitLossForPeriod")}
+
+
+def pat_tag(kind, quarters):
+    """One PAT measure for every quarter in a card, so QoQ/YoY never compare different measures."""
+    tags = PAT_TAGS["bank" if kind == "bank" else "other"]
+    return next((tag for tag in tags if all(tag in q["values"] for q in quarters.values())), None)
+
+
+def headline(values, kind, pat_key=None):
     """Four headline lines in rupees (Decimal), or None where not reported."""
     if kind == "bank":
         revenue = first(values, "Income")
@@ -95,13 +105,12 @@ def headline(values, kind):
         if "InterestEarned" in values and "InterestExpended" in values:
             nii = values["InterestEarned"] - values["InterestExpended"]
         pbt = first(values, "ProfitLossFromOrdinaryActivitiesBeforeTax", "ProfitBeforeTax")
-        pat = first(values, "ProfitLossAfterTaxesMinorityInterestAndShareOfProfitLossOfAssociates",
-                    "ProfitLossForThePeriod", "ProfitLossForPeriod")
+        pat = values.get(pat_key) if pat_key else first(values, *PAT_TAGS["bank"])
         return {"revenue": revenue, "core": nii, "pbt": pbt, "pat": pat,
                 "ppop": first(values, "OperatingProfitBeforeProvisionAndContingencies")}
     revenue = first(values, "RevenueFromOperations")
     pbt = first(values, "ProfitBeforeTax")
-    pat = first(values, "ProfitOrLossAttributableToOwnersOfParent", "ProfitLossForPeriod")
+    pat = values.get(pat_key) if pat_key else first(values, *PAT_TAGS["other"])
     if kind == "lender":
         interest = first(values, "InterestEarned")
         finance = first(values, "FinanceCosts")
@@ -142,7 +151,8 @@ def build_card(symbol, quarters):
     latest_end = max(quarters)
     latest = quarters[latest_end]
     kind = kind_of(symbol, latest["values"])
-    lines = {end: headline(q["values"], kind) for end, q in quarters.items()}
+    pat_key = pat_tag(kind, quarters)
+    lines = {end: headline(q["values"], kind, pat_key) for end, q in quarters.items()}
     prev, year_ago = shift_quarter(latest_end, 1), shift_quarter(latest_end, 4)
     core_label = {"bank": "Net interest income", "lender": "Net interest income"}.get(kind, "EBITDA")
     labels = {"revenue": "Total income" if kind == "bank" else "Revenue", "core": core_label,
@@ -181,7 +191,15 @@ def build_card(symbol, quarters):
                        "locator": "XBRL tags: RevenueFromOperations, ProfitBeforeTax, FinanceCosts, "
                                   "DepreciationDepletionAndAmortisationExpense, OtherIncome",
                        "excerpt": "", "page": None},
-            "definition": definition + " ₹ crore. Figures read from the company's XBRL filing to NSE."}
+            "definition": definition + pat_note(latest["values"], kind) + " ₹ crore. Figures read from the company's XBRL filing to NSE."}
+
+
+def pat_note(values, kind):
+    """PAT above PBT is usually a discontinued-operations gain; say so rather than look like an error."""
+    discontinued = values.get("ProfitLossFromDiscontinuedOperationsAfterTax")
+    if kind != "bank" and discontinued and abs(discontinued) >= CRORE:
+        return f" PAT includes ₹{crore(discontinued):,.0f} cr from discontinued operations; PBT covers continuing operations."
+    return ""
 
 
 def listing(symbol, opener):
