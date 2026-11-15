@@ -77,7 +77,7 @@ docker compose up --build --wait        # http://localhost:8090
 docker compose exec -T app python -m unittest discover -s tests
 ```
 
-Or with Python 3.12: `pip install -r requirements.txt && python -m uvicorn finn.app:app --port 8090`. Model features are off until `FINN_ENABLE_LLM=1` and a key are set; everything above except the optional synthesis works without one. Deployment notes: [DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Or with Python 3.12: `pip install -r requirements.txt && python -m uvicorn finn.app:app --port 8090`. Model features are off until `FINN_ENABLE_LLM=1` and a key are set; everything above except the optional synthesis works without one. Deployment notes: [DEPLOYMENT.md](docs/DEPLOYMENT.md). Every setting, command and file is described in [USAGE.md](docs/USAGE.md).
 
 ## Deliberately left out, and next
 
