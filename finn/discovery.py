@@ -298,6 +298,7 @@ def run(symbol, token, fetch=fetch_public, *, force=False):
 
 def _run(symbol, token, fetch=fetch_public, *, force=False):
     errors, indexed, reused = [], 0, 0
+    skipped = {}  # one line per failure reason, not one per document
     candidates = []
     def publish(detail):
         with store.connection() as db:
@@ -329,7 +330,16 @@ def _run(symbol, token, fetch=fetch_public, *, force=False):
                     continue
                 candidate.update(index_status="downloading", cached=False)
                 publish(label + " — downloading the original PDF…")
-                body = fetch(candidate["url"])
+                try:
+                    body = fetch(candidate["url"])
+                except providers.SourceError as exc:
+                    # The issuer's site failed; companies also file transcripts with NSE. Try that copy.
+                    copy = exchange_copy(symbol, candidate) if fetch is fetch_public and candidate["kind"] == "transcript" else None
+                    if not copy:
+                        raise
+                    candidate.update(original_url=candidate["url"], url=copy[0],
+                                     source_note="Issuer site unavailable (" + str(exc)[:80] + "); used the copy filed with NSE.")
+                    body = copy[1]
                 with store.connection() as db:
                     if not db.execute("SELECT 1 FROM document_jobs WHERE symbol=? AND token=? AND status='running'", (symbol,token)).fetchone():
                         return
@@ -348,7 +358,7 @@ def _run(symbol, token, fetch=fetch_public, *, force=False):
                                      elapsed_seconds=round(time.monotonic() - started, 1))
                 indexed += 1
             except (providers.SourceError, PyPdfError, ValueError, OSError) as exc:
-                errors.append(candidate["title"] + ": " + str(exc))
+                skipped.setdefault(str(exc), []).append(candidate["title"].split(" · ", 1)[-1])
                 candidate.update(index_status="error", error=str(exc)[:300])
             publish(label + (" — indexed." if candidate.get("index_status") == "indexed" else " — could not be indexed; continuing."))
     except providers.SourceError as exc:
@@ -359,14 +369,39 @@ def _run(symbol, token, fetch=fetch_public, *, force=False):
     detail = f"Indexed {indexed} of {len(candidates)} documents."
     if reused:
         detail += f" Reused {reused} recent saved index(es); their PDFs were not downloaded again."
+    for reason, titles in skipped.items():
+        named = ", ".join(titles[:3]) + (f" and {len(titles) - 3} more" if len(titles) > 3 else "")
+        detail += f" Skipped {len(titles)}: {reason.rstrip('.')} ({named})."
     if errors:
         detail += " " + " ".join(errors)
     with store.connection() as db:
         db.execute("UPDATE document_jobs SET status=?, finished=?, detail=? WHERE symbol=? AND token=?",
-                   ("partial" if indexed and errors else "complete" if indexed else "error",
+                   ("partial" if indexed and (errors or skipped) else "complete" if indexed else "error",
                     providers.iso(live.clock()), detail[:2400], symbol, token))
     if indexed:
         follow_up(symbol, online=fetch is fetch_public)
+
+
+def exchange_copy(symbol, candidate):
+    """The same call's transcript as filed with NSE, when the issuer's own link fails."""
+    from datetime import date, timedelta
+    month = candidate.get("call_month")
+    if not month:
+        return None
+    year, mon = (int(x) for x in month.split("-"))
+    start = date(year, mon, 1)
+    end = min(start + timedelta(days=45), date.today())
+    try:
+        opener = providers.nse_session()
+        rows = providers.filings_by_symbol({symbol: {"name": symbol}}, start, end, opener)["rows"]
+        rows = [r for r in rows if "transcript" in (r["title"] + " " + r["details"]).casefold()
+                and r["url"].casefold().endswith(".pdf")]
+        if not rows:
+            return None
+        row = min(rows, key=lambda r: r["published"])
+        return row["url"], providers.request_bytes(row["url"], opener, limit=documents.limits()[0], timeout=45)
+    except providers.SourceError:
+        return None
 
 
 def follow_up(symbol, online=True):

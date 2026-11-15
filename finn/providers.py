@@ -75,7 +75,8 @@ def attachment(value):
         url = "https://www.nseindia.com" + url
     parts = urlsplit(url)
     host = (parts.hostname or "").lower()
-    if parts.scheme != "https" or not (host == "nseindia.com" or host.endswith(".nseindia.com")):
+    # NSE serves attachments from both its .com and .in archive hosts.
+    if parts.scheme != "https" or not any(host == d or host.endswith("." + d) for d in ("nseindia.com", "nseindia.in")):
         raise SourceError("Announcement has no usable NSE attachment.")
     if parts.username or parts.password or parts.port not in {None, 443}:
         raise SourceError("Announcement attachment has an invalid address.")

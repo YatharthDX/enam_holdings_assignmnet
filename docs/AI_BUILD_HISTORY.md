@@ -1,26 +1,41 @@
 # AI build history
 
-How I worked with AI tools to build YFINN. Requests below are condensed versions of my prompts; routine requests (git commands, small copy changes, local-hosting help) are left out.
+How I worked with AI tools to build YFINN.
 
 ## Tools
 
-| Tool                                      | Used for                                                                                                          |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Claude Code (VS Code extension)           | Planning, implementation, testing and verification in the repository                                              |
-| Web search (inside Claude Code)           | Checking current NSE/BSE endpoints, PDF-parsing options and free LLM tiers before choosing                        |
-| `ui-ux-pro-max` skill                     | Generating a design-system recommendation, then auditing accessibility, contrast, touch targets and mobile layout |
-| `/code-review`                            | A final review of the whole repository against the brief, which produced ten findings that were then fixed        |
-| Headless Chrome (driven from the session) | Phone-width screenshots and scripted checks: contrast, overflow, scroll and navigation behaviour                  |
+| Tool                             | Used for                                                                                                          |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| ChatGPT (browser)                | Breaking down the problem statement, and devising a high level development outline                                |
+| Claude Code (VS Code extension)  | Planning, implementation, testing and verification in the repository                                              |
+| Web search                       | Checking current NSE/BSE endpoints, PDF-parsing options and free LLM tiers before choosing                        |
+| `ui-ux-pro-max` skill            | Generating a design-system recommendation, then auditing accessibility, contrast, touch targets and mobile layout |
+| `/code-review`                   | A final review of the whole repository against the brief, which produced ten findings that were then fixed        |
+| Manual Checking on phone browser | Make it compatible for phone browser and prevent overflowing buttons                                              |
 
-## Earlier sessions (initial prototype)
+## Understanding and initial planning (ChatGPT)
 
-The first prototype (Push digest, document indexing, fictional network, workspaces, optional AI synthesis) was built in earlier sessions before the work below.
+After reading the problem statement on my own, I used ChatGPT to verify that I havent missed anything.
+Breaking the problem statements into part and then finally creating a high level plan.
 
-## Session: gap analysis to v0.8
+> "Explain the whole task to me in detail. Include all the constraints, requirements and deliverables.
+> Then create a high level structured plan considering all of the above findings. Break the problem statement into parts for better understanding and code design.
+> Dont start coding as of now."
 
-### 1. Audit the build against the brief before writing code
+Suggested stack:
+Frontend - HTML, CSS, JavaScript
+Backend - FastAPI
+Database - SQLite
+Deployment - Docker
+PDF processing - pypdf + PDFium
+After reviewing the doc I moved to Claude Code for the development part.
 
-> "Read both PDFs and list every constraint and deliverable. Research the best tools for each pipeline step, write the plan you would build, then compare it with my repository and rank the gaps."
+As I was familiar with JavaScript and FastAPI, I agreed with the plan after some minor fixes.
+
+## Final planning
+
+> "Read both PDFs (assignment details), then list every constraint, requirements and deliverables. Research the best tools for each step.
+> Then finally draft a plan for our development, then compare it with my old plan, and highlight the gaps"
 
 What came back: a requirement-by-requirement comparison table. The biggest gaps: the three Push examples the brief highlights were missing or manual; the promised-vs-delivered analysis needed human review for every figure; the hosted demo showed an empty live feed; and models were not used for bulk work at all.
 

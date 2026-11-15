@@ -1,5 +1,11 @@
 import {dateLabel, esc, icon, route, sourceButton} from './ui.js?v=0.8.0';
 
+function openQuestions(gaps) {
+  // Older saved readings mixed system notices into gaps; show only the model's open questions.
+  const items=(gaps||[]).filter(g=>!/^YFINN withheld|^The selected evidence did not produce/.test(g));
+  return items.length ? `<details class="analysis-gaps"><summary>Questions these documents leave open · ${items.length}</summary><ul>${items.map(g => `<li>${esc(g)}</li>`).join('')}</ul></details>` : '';
+}
+
 function usageLine(usage, saved = true) {
   if (!usage) return '';
   const cost = usage.estimated_usd == null ? '' : ` · est. $${usage.estimated_usd.toFixed(4)} (rates ${usage.pricing_date})`;
@@ -16,7 +22,7 @@ function analysisBody(data) {
   const job = a.job, result = job?.result, running = job?.status === 'running';
   const historical = a.coverage.corpus === 'historical_excerpts';
   const ready = a.coverage.selected_passages > 0;
-  const finished = job?.status === 'complete';
+  const finished = job?.status === 'complete' && Boolean(result?.findings?.length);
   const title = a.lenses.find(l => l.id === a.lens)?.title;
   const why = !a.configured ? (a.public_demo ? 'Optional AI is awaiting server configuration. Core research remains available.' : `Add ${a.key_env} to .env, then restart YFINN. Provider setup steps are in README.md.`) :
     !ready ? 'Choose Find documents above to index primary sources for this ticker.' :
@@ -40,7 +46,9 @@ function analysisBody(data) {
     ${result ? `<div class="analysis-result"><div class="section-meta">${esc(title)} · ${esc(dateLabel(job.finished))}</div>
       ${result.findings.map(f => `<article class="analysis-finding"><div class="analysis-label">${esc(f.label)}${f.kind==='inference' ? '<span>Interpretation</span>' : '<span>Reported</span>'}</div>
         <p>${esc(f.text)}</p><div class="analysis-citations">${f.sources.map((s,i) => sourceButton(s,`${s.title} · p. ${s.page}`)).join('')}</div></article>`).join('')}
-      ${result.gaps.length ? `<details class="analysis-gaps" open><summary>Evidence gaps & limits</summary><ul>${result.gaps.map(g => `<li>${esc(g)}</li>`).join('')}</ul></details>` : ''}
+      ${result.findings.length ? '' : `<div class="note"><strong>No finding could be matched to the source text</strong><p>Every statement the model made has to quote these documents exactly, and this run's quotes did not match. Run it again or try another lens.</p></div>`}
+      ${result.withheld ? `<p class="coverage">${result.withheld} more statement${result.withheld===1?'':'s'} left out because ${result.withheld===1?'its':'their'} quotes or figures could not be matched to the documents.</p>` : ''}
+      ${openQuestions(result.gaps)}
       <p class="coverage">${esc(result.verification)}</p>${usageLine(job.usage)}</div>` : job?.usage ? usageLine(job.usage, false) : ''}
     <details class="analysis-method"><summary>Sources, privacy & usage</summary>
       <p>${esc(a.coverage.note)}</p><p>On your request, selected public document passages go to ${esc(a.provider_label)}. Your portfolio and fictional contacts stay in YFINN. Results are generated only when you press Analyze documents or Retry analysis.</p>

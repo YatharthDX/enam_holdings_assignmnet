@@ -360,3 +360,35 @@ class PatConsistencyTests(unittest.TestCase):
         pat = next(r for r in card["rows"] if r["key"] == "pat")
         self.assertEqual(pat["value_cr"], 110.0)  # total profit for both quarters, not owners' share for one
         self.assertEqual(pat["qoq"], 10.0)
+
+
+class QuoteVerificationTests(unittest.TestCase):
+    PASSAGE = ("LTTS secured large deal TCV of $203 million in Q2 FY27, with over 50% of these wins being AI-\n"
+               "led, and reported that both order backlog and pipeline are up year-on-year.")
+
+    def test_typography_and_line_breaks_still_match_the_exact_source(self):
+        from finn import analysis
+        self.assertEqual(analysis.locate("over 50 % of these wins being AI–led, and reported that both order backlog", self.PASSAGE),
+                         "over 50% of these wins being AI-led, and reported that both order backlog")
+        self.assertEqual(analysis.locate("“both order backlog and pipeline are up year on year”", self.PASSAGE),
+                         "both order backlog and pipeline are up year-on-year")
+        self.assertIsNone(analysis.locate("revenue grew strongly across every segment this quarter", self.PASSAGE))
+
+    def test_one_bad_citation_does_not_sink_a_supported_finding(self):
+        from finn import analysis
+        body = {"findings": [
+            {"label": "Business", "kind": "fact", "text": "Large deal TCV was $203 million in the quarter.",
+             "evidence": [{"passage_id": "P1", "quote": "secured large deal TCV of $203 million in Q2 FY27"},
+                          {"passage_id": "P1", "quote": "this sentence is not in the passage at all, anywhere"}]},
+            {"label": "Business", "kind": "fact", "text": "Deal value rose to $999 million.",
+             "evidence": [{"passage_id": "P1", "quote": "secured large deal TCV of $203 million in Q2 FY27"}]}],
+            "gaps": ["Which clients drove the wins?"]}
+        response = {"status": "completed", "output": [{"type": "message", "content": [{"type": "output_text", "text": json.dumps(body)}]}]}
+        data = {"passages": [{"id": "P1", "page": 6, "text": self.PASSAGE,
+                              "source": {"id": "d", "title": "LTTS call", "date": "2026-11-10", "url": "https://x"}}],
+                "coverage": {}}
+        result = analysis.verify(response, data)
+        self.assertEqual(len(result["findings"]), 1)
+        self.assertEqual(len(result["findings"][0]["sources"]), 1)
+        self.assertEqual(result["withheld"], 1)  # $999 million is not in any quote
+        self.assertEqual(result["gaps"], ["Which clients drove the wins?"])
